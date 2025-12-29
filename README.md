@@ -1,13 +1,15 @@
 # @mcp-z/server
 
 Docs: https://mcp-z.github.io/server
-Shared utilities for building MCP servers (stdio + HTTP) with consistent config parsing.
+Shared utilities for building MCP servers with stdio + HTTP transports, middleware composition, and file serving.
 
 ## Common uses
 
-- Parse CLI/env config for stdio or HTTP
+- Parse transport config for stdio or HTTP
 - Wire MCP servers to stdio or Express HTTP
-- Standardize tool/resource/prompt registration
+- Compose auth/logging middleware
+- Serve generated files (PDFs, CSVs)
+- Build field/pagination/shape schemas
 
 ## Install
 
@@ -45,31 +47,50 @@ if (config.transport.type === 'stdio') {
 - `registerResources(server, resources)`
 - `registerPrompts(server, prompts)`
 
-## OAuth helpers
+## Middleware composition
 
-Use `createOAuthAdapters` to wire loopback OAuth for Google or Microsoft.
+Use `composeMiddleware` with middleware layers (auth, logging, etc.):
 
 ```ts
-import { createOAuthAdapters, parseConfig } from '@mcp-z/server';
-import Keyv from 'keyv';
-import { KeyvFile } from 'keyv-file';
+import { composeMiddleware, createLoggingMiddleware } from '@mcp-z/server';
 
-const config = parseConfig(process.argv.slice(2), process.env);
-const tokenStore = new Keyv({ store: new KeyvFile({ filename: '.tokens/google.json' }) });
+const logging = createLoggingMiddleware({ logger: console });
+const composed = composeMiddleware({ tools, resources, prompts }, [
+  { withTool: authMiddleware.withToolAuth, withResource: authMiddleware.withResourceAuth, withPrompt: authMiddleware.withPromptAuth },
+  { withTool: logging.withToolLogging, withResource: logging.withResourceLogging, withPrompt: logging.withPromptLogging }
+]);
+```
 
-const { loopback } = await createOAuthAdapters(config.transport, {
-  provider: 'google',
-  service: 'gmail',
-  clientId: process.env.GOOGLE_CLIENT_ID!,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-  scope: 'https://www.googleapis.com/auth/gmail.modify',
-  headless: config.headless,
-  tokenStore,
-  logger: console
+## File serving utilities
+
+For servers that generate files (PDFs, CSVs, images):
+
+- `reserveFile()` - Reserve a file path for streaming writes
+- `writeFile()` - Write a buffer directly
+- `getFileUri()` - `file://` or `http://` URI based on transport
+- `createFileServingRouter()` - Express router to serve files
+
+```ts
+import { reserveFile, getFileUri, createFileServingRouter } from '@mcp-z/server';
+
+const reservation = await reserveFile('report.csv', { storageDir: '/tmp/files' });
+const uri = getFileUri(reservation.storedName, transport, {
+  storageDir: '/tmp/files',
+  baseUrl: 'https://example.com',
+  endpoint: '/files'
 });
 
-const middleware = loopback.authMiddleware();
+const router = createFileServingRouter({ storageDir: '/tmp/files' }, { contentType: 'text/csv' });
+app.use('/files', router);
 ```
+
+## Schema helpers
+
+Helpers for consistent tool inputs and output shaping:
+
+- `createFieldsSchema()` / `parseFields()` / `filterFields()`
+- `createPaginationSchema()`
+- `createShapeSchema()` / `toColumnarFormat()`
 
 ## Requirements
 
