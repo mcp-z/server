@@ -2,6 +2,8 @@
 export * from './builders/schemas.ts';
 // File serving utilities
 export * from './file-serving/index.ts';
+// Config helpers
+export { default as findConfigPath, type FindConfigOptions } from './lib/find-config-path.ts';
 export * from './middleware/composer.ts';
 // Middleware
 export * from './middleware/logging.ts';
