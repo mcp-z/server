@@ -73,14 +73,14 @@ For servers that generate files (PDFs, CSVs, images):
 ```ts
 import { reserveFile, getFileUri, createFileServingRouter } from '@mcp-z/server';
 
-const reservation = await reserveFile('report.csv', { storageDir: '/tmp/files' });
+const reservation = await reserveFile('report.csv', { resourceStoreUri: 'file:///tmp/files' });
 const uri = getFileUri(reservation.storedName, transport, {
-  storageDir: '/tmp/files',
+  resourceStoreUri: 'file:///tmp/files',
   baseUrl: 'https://example.com',
   endpoint: '/files'
 });
 
-const router = createFileServingRouter({ storageDir: '/tmp/files' }, { contentType: 'text/csv' });
+const router = createFileServingRouter({ resourceStoreUri: 'file:///tmp/files' }, { contentType: 'text/csv' });
 app.use('/files', router);
 ```
 

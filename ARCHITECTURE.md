@@ -576,7 +576,7 @@ Generic file serving for HTTP transports - used for serving generated files like
 ```typescript
 interface FileServingConfig {
   routePrefix: string;        // URL path prefix
-  storageDir: string;         // Filesystem storage path
+  resourceStoreUri: string;         // Resource store URI (file://)
   getMetadata?: (fileId: string) => Promise<FileMetadata | null>;
   getAllFiles?: () => Promise<FileInfo[]>;
 }
@@ -591,7 +591,7 @@ function createFileServingRouter(
 2. Mount GET endpoint for file retrieval at `/:fileId`
 3. Mount GET endpoint for file listing at `/`
 4. Use provided metadata functions for access control
-5. Stream files from storage directory
+5. Stream files from resource store
 6. Return 404 for missing files
 
 **Security**: Sanitize file paths to prevent directory traversal attacks.

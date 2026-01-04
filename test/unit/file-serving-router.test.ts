@@ -23,13 +23,13 @@ describe('file-serving router', () => {
   });
 
   describe('basic functionality', () => {
-    it('serves files from storage directory', async () => {
+    it('serves files from resource store', async () => {
       // Create a test file
       const buffer = Buffer.from('test PDF content');
-      const { storedName } = await writeFile(buffer, 'test.pdf', { storageDir: testDir });
+      const { storedName } = await writeFile(buffer, 'test.pdf', { resourceStoreUri: `file://${testDir}` });
 
       // Mount router
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       // Request the file
@@ -39,7 +39,7 @@ describe('file-serving router', () => {
     });
 
     it('returns 404 for non-existent files', async () => {
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       await request(app).get('/files/nonexistent.pdf').expect(404).expect('File not found');
@@ -47,9 +47,9 @@ describe('file-serving router', () => {
 
     it('serves files with correct Content-Disposition header', async () => {
       const buffer = Buffer.from('test content');
-      const { storedName } = await writeFile(buffer, 'report.pdf', { storageDir: testDir });
+      const { storedName } = await writeFile(buffer, 'report.pdf', { resourceStoreUri: `file://${testDir}` });
 
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf', contentDisposition: 'attachment' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf', contentDisposition: 'attachment' });
       app.use('/files', router);
 
       await request(app)
@@ -60,9 +60,9 @@ describe('file-serving router', () => {
 
     it('supports inline content disposition', async () => {
       const buffer = Buffer.from('test content');
-      const { storedName } = await writeFile(buffer, 'preview.pdf', { storageDir: testDir });
+      const { storedName } = await writeFile(buffer, 'preview.pdf', { resourceStoreUri: `file://${testDir}` });
 
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf', contentDisposition: 'inline' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf', contentDisposition: 'inline' });
       app.use('/files', router);
 
       await request(app)
@@ -75,9 +75,9 @@ describe('file-serving router', () => {
   describe('content types', () => {
     it('serves static content type', async () => {
       const buffer = Buffer.from('test content');
-      const { storedName } = await writeFile(buffer, 'document.txt', { storageDir: testDir });
+      const { storedName } = await writeFile(buffer, 'document.txt', { resourceStoreUri: `file://${testDir}` });
 
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'text/plain' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'text/plain' });
       app.use('/files', router);
 
       await request(app).get(`/files/${storedName}`).expect(200).expect('Content-Type', 'text/plain; charset=utf-8');
@@ -85,13 +85,13 @@ describe('file-serving router', () => {
 
     it('serves dynamic content type based on filename', async () => {
       const pdfBuffer = Buffer.from('pdf content');
-      const { storedName: pdfName } = await writeFile(pdfBuffer, 'document.pdf', { storageDir: testDir });
+      const { storedName: pdfName } = await writeFile(pdfBuffer, 'document.pdf', { resourceStoreUri: `file://${testDir}` });
 
       const csvBuffer = Buffer.from('csv content');
-      const { storedName: csvName } = await writeFile(csvBuffer, 'data.csv', { storageDir: testDir });
+      const { storedName: csvName } = await writeFile(csvBuffer, 'data.csv', { resourceStoreUri: `file://${testDir}` });
 
       const router = createFileServingRouter(
-        { storageDir: testDir },
+        { resourceStoreUri: `file://${testDir}` },
         {
           contentType: (filename) => {
             if (filename.endsWith('.pdf')) return 'application/pdf';
@@ -112,7 +112,7 @@ describe('file-serving router', () => {
 
   describe('security', () => {
     it('prevents path traversal attacks', async () => {
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       // Try to access parent directory
@@ -122,8 +122,8 @@ describe('file-serving router', () => {
       assert.ok(response.status === 403 || response.status === 404);
     });
 
-    it('prevents accessing files outside storage directory', async () => {
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+    it('prevents accessing files outside resource store', async () => {
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       // Try to use absolute path outside storage
@@ -132,7 +132,7 @@ describe('file-serving router', () => {
     });
 
     it('prevents dot-dot sequences', async () => {
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       const response = await request(app).get('/files/foo/../../../etc/passwd');
@@ -143,9 +143,9 @@ describe('file-serving router', () => {
   describe('filename extraction', () => {
     it('extracts original filename from UUID-prefixed stored name', async () => {
       const buffer = Buffer.from('test content');
-      const { storedName } = await writeFile(buffer, 'my-report.pdf', { storageDir: testDir });
+      const { storedName } = await writeFile(buffer, 'my-report.pdf', { resourceStoreUri: `file://${testDir}` });
 
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       await request(app)
@@ -156,9 +156,9 @@ describe('file-serving router', () => {
 
     it('handles filenames with special characters', async () => {
       const buffer = Buffer.from('test content');
-      const { storedName } = await writeFile(buffer, 'project plan (v2).pdf', { storageDir: testDir });
+      const { storedName } = await writeFile(buffer, 'project plan (v2).pdf', { resourceStoreUri: `file://${testDir}` });
 
-      const router = createFileServingRouter({ storageDir: testDir }, { contentType: 'application/pdf' });
+      const router = createFileServingRouter({ resourceStoreUri: `file://${testDir}` }, { contentType: 'application/pdf' });
       app.use('/files', router);
 
       await request(app)
@@ -172,7 +172,7 @@ describe('file-serving router', () => {
     it('returns 500 for unexpected errors', async () => {
       // Create router with non-existent directory (will cause error on file read)
       const router = createFileServingRouter(
-        { storageDir: '/nonexistent/directory' },
+        { resourceStoreUri: 'file:///nonexistent/directory' },
         {
           contentType: 'application/pdf',
         }
@@ -196,13 +196,13 @@ describe('file-serving router', () => {
       const storedFiles = await Promise.all(
         testFiles.map(async (file) => ({
           ...file,
-          storedName: (await writeFile(Buffer.from(file.content), file.filename, { storageDir: testDir })).storedName,
+          storedName: (await writeFile(Buffer.from(file.content), file.filename, { resourceStoreUri: `file://${testDir}` })).storedName,
         }))
       );
 
       // Create router with dynamic content type
       const router = createFileServingRouter(
-        { storageDir: testDir },
+        { resourceStoreUri: `file://${testDir}` },
         {
           contentType: (filename) => {
             if (filename.endsWith('.pdf')) return 'application/pdf';

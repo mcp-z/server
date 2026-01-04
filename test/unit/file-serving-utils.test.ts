@@ -13,7 +13,7 @@ describe('file-serving utilities', () => {
           'test-file.pdf',
           { type: 'stdio' },
           {
-            storageDir: '/tmp/files',
+            resourceStoreUri: 'file:///tmp/files',
           }
         );
 
@@ -22,7 +22,7 @@ describe('file-serving utilities', () => {
 
       it('returns file:// URI when transport is undefined', () => {
         const uri = getFileUri('test-file.pdf', undefined, {
-          storageDir: '/tmp/files',
+          resourceStoreUri: 'file:///tmp/files',
         });
 
         assert.strictEqual(uri, 'file:///tmp/files/test-file.pdf');
@@ -33,7 +33,7 @@ describe('file-serving utilities', () => {
           'test-file.pdf',
           { type: 'stdio' },
           {
-            storageDir: './files',
+            resourceStoreUri: 'file://./files',
           }
         );
 
@@ -47,7 +47,7 @@ describe('file-serving utilities', () => {
       it('returns http:// URI with default endpoint', () => {
         const transport: TransportConfig = { type: 'http', port: 3000 };
         const uri = getFileUri('test-file.pdf', transport, {
-          storageDir: '/tmp/files',
+          resourceStoreUri: 'file:///tmp/files',
         });
 
         assert.strictEqual(uri, 'http://localhost:3000/files/test-file.pdf');
@@ -56,7 +56,7 @@ describe('file-serving utilities', () => {
       it('uses custom endpoint', () => {
         const transport: TransportConfig = { type: 'http', port: 3000 };
         const uri = getFileUri('test-file.pdf', transport, {
-          storageDir: '/tmp/files',
+          resourceStoreUri: 'file:///tmp/files',
           endpoint: '/exports',
         });
 
@@ -66,7 +66,7 @@ describe('file-serving utilities', () => {
       it('uses baseUrl when provided', () => {
         const transport: TransportConfig = { type: 'http', port: 3000 };
         const uri = getFileUri('test-file.pdf', transport, {
-          storageDir: '/tmp/files',
+          resourceStoreUri: 'file:///tmp/files',
           baseUrl: 'https://example.com',
         });
 
@@ -76,7 +76,7 @@ describe('file-serving utilities', () => {
       it('uses baseUrl with custom endpoint', () => {
         const transport: TransportConfig = { type: 'http', port: 3000 };
         const uri = getFileUri('test-file.pdf', transport, {
-          storageDir: '/tmp/files',
+          resourceStoreUri: 'file:///tmp/files',
           baseUrl: 'https://example.com',
           endpoint: '/api/files',
         });
@@ -90,7 +90,7 @@ describe('file-serving utilities', () => {
         assert.throws(
           () => {
             getFileUri('test-file.pdf', transport, {
-              storageDir: '/tmp/files',
+              resourceStoreUri: 'file:///tmp/files',
             });
           },
           {
@@ -117,7 +117,7 @@ describe('file-serving utilities', () => {
 
     it('writes file to specified directory with ID prefix', async () => {
       const buffer = Buffer.from('test content');
-      const result = await writeFile(buffer, 'test.pdf', { storageDir: testDir });
+      const result = await writeFile(buffer, 'test.pdf', { resourceStoreUri: `file://${testDir}` });
 
       // Verify file was written
       assert.ok(existsSync(result.fullPath));
@@ -132,8 +132,8 @@ describe('file-serving utilities', () => {
 
     it('generates unique IDs for each file', async () => {
       const buffer = Buffer.from('test content');
-      const result1 = await writeFile(buffer, 'test.pdf', { storageDir: testDir });
-      const result2 = await writeFile(buffer, 'test.pdf', { storageDir: testDir });
+      const result1 = await writeFile(buffer, 'test.pdf', { resourceStoreUri: `file://${testDir}` });
+      const result2 = await writeFile(buffer, 'test.pdf', { resourceStoreUri: `file://${testDir}` });
 
       // Should have different IDs
       assert.notStrictEqual(result1.id, result2.id);
@@ -149,7 +149,7 @@ describe('file-serving utilities', () => {
         assert.ok(!existsSync(newDir));
 
         const buffer = Buffer.from('test content');
-        const result = await writeFile(buffer, 'test.pdf', { storageDir: newDir });
+        const result = await writeFile(buffer, 'test.pdf', { resourceStoreUri: `file://${newDir}` });
 
         // Directory should now exist
         assert.ok(existsSync(newDir));
@@ -165,7 +165,7 @@ describe('file-serving utilities', () => {
       const nestedDir = join(testDir, 'level1', 'level2', 'level3');
 
       const buffer = Buffer.from('test content');
-      const result = await writeFile(buffer, 'test.pdf', { storageDir: nestedDir });
+      const result = await writeFile(buffer, 'test.pdf', { resourceStoreUri: `file://${nestedDir}` });
 
       assert.ok(existsSync(nestedDir));
       assert.ok(existsSync(result.fullPath));
@@ -177,7 +177,7 @@ describe('file-serving utilities', () => {
       for (const ext of extensions) {
         const filename = `test${ext}`;
         const buffer = Buffer.from('test content');
-        const result = await writeFile(buffer, filename, { storageDir: testDir });
+        const result = await writeFile(buffer, filename, { resourceStoreUri: `file://${testDir}` });
 
         assert.ok(result.storedName.includes(filename));
         assert.ok(existsSync(result.fullPath));
@@ -189,7 +189,7 @@ describe('file-serving utilities', () => {
 
       for (const filename of filenames) {
         const buffer = Buffer.from('test content');
-        const result = await writeFile(buffer, filename, { storageDir: testDir });
+        const result = await writeFile(buffer, filename, { resourceStoreUri: `file://${testDir}` });
 
         assert.ok(result.storedName.includes(filename));
         assert.ok(existsSync(result.fullPath));
