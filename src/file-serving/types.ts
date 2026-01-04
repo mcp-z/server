@@ -2,7 +2,7 @@
  * Configuration for generating file URIs
  */
 export interface FileUriConfig {
-  storageDir: string;
+  resourceStoreUri: string;
   /** e.g., 'https://example.com' or 'http://localhost:3000' */
   baseUrl?: string;
   /** @default '/files' */
@@ -15,13 +15,13 @@ export interface FileUriConfig {
  * @example
  * // Default configuration (UUID with hyphen delimiter)
  * const config: FileServingConfig = {
- *   storageDir: '/tmp/files'
+ *   resourceStoreUri: 'file:///tmp/files'
  * };
  *
  * @example
  * // Custom delimiter
  * const config: FileServingConfig = {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   delimiter: '_'
  * };
  *
@@ -29,13 +29,13 @@ export interface FileUriConfig {
  * // Custom ID generator (e.g., nanoid)
  * import { nanoid } from 'nanoid';
  * const config: FileServingConfig = {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   delimiter: '-',
  *   generateId: () => nanoid(12)
  * };
  */
 export interface FileServingConfig {
-  storageDir: string;
+  resourceStoreUri: string;
   /** @default '-' - IDs are validated to not contain this */
   delimiter?: string;
   /** @default randomUUID - must not generate IDs containing delimiter */

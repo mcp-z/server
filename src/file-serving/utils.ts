@@ -8,6 +8,24 @@ import type { FileReservation, FileServingConfig, FileUriConfig } from './types.
 // Use tilde as default delimiter - valid on all filesystems, rarely used in filenames, and URL-safe
 const DEFAULT_DELIMITER = '~';
 const DEFAULT_GENERATE_ID = randomUUID;
+const FILE_URI_PREFIX = 'file://';
+
+export function resolveResourceStorePath(resourceStoreUri: string): string {
+  if (!resourceStoreUri) {
+    throw new Error('File serving requires a resourceStoreUri.');
+  }
+
+  if (resourceStoreUri.startsWith(FILE_URI_PREFIX)) {
+    const rawPath = resourceStoreUri.slice(FILE_URI_PREFIX.length);
+    return resolve(rawPath);
+  }
+
+  if (resourceStoreUri.includes('://')) {
+    throw new Error(`Unsupported resourceStoreUri scheme: ${resourceStoreUri}. Only file:// URIs are supported.`);
+  }
+
+  return resolve(resourceStoreUri);
+}
 
 /**
  * Generate a validated ID that doesn't contain the delimiter
@@ -106,7 +124,7 @@ export function parseStoredName(storedName: string, delimiter: string): { id: st
  *
  * @example
  * const reservation = await reserveFile('export.csv', {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   delimiter: '-'
  * });
  *
@@ -119,7 +137,7 @@ export function parseStoredName(storedName: string, delimiter: string): { id: st
 export async function reserveFile(originalFilename: string, config: FileServingConfig): Promise<FileReservation> {
   const delimiter = config.delimiter ?? DEFAULT_DELIMITER;
   const generateIdFn = config.generateId ?? DEFAULT_GENERATE_ID;
-  const outputDir = resolve(config.storageDir);
+  const outputDir = resolveResourceStorePath(config.resourceStoreUri);
 
   await mkdir(outputDir, { recursive: true });
 
@@ -144,7 +162,7 @@ export async function reserveFile(originalFilename: string, config: FileServingC
  * @example
  * const pdfBuffer = Buffer.from('...');
  * const result = await writeFile(pdfBuffer, 'report.pdf', {
- *   storageDir: '/tmp/files'
+ *   resourceStoreUri: 'file:///tmp/files'
  * });
  * // result.storedName => '{uuid}-report.pdf'
  * // result.fullPath => '/tmp/files/{uuid}-report.pdf'
@@ -165,13 +183,13 @@ export async function writeFile(buffer: Buffer, originalFilename: string, config
  *
  * @example
  * // Stdio transport (or no transport)
- * getFileUri('abc123-report.pdf', undefined, { storageDir: '/tmp/files' })
+ * getFileUri('abc123-report.pdf', undefined, { resourceStoreUri: 'file:///tmp/files' })
  * // => 'file:///tmp/files/abc123-report.pdf'
  *
  * @example
  * // HTTP transport with explicit base URL
  * getFileUri('abc123-report.pdf', { type: 'http', port: 3000 }, {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   baseUrl: 'https://example.com'
  * })
  * // => 'https://example.com/files/abc123-report.pdf'
@@ -179,15 +197,16 @@ export async function writeFile(buffer: Buffer, originalFilename: string, config
  * @example
  * // HTTP transport with default localhost
  * getFileUri('abc123-report.pdf', { type: 'http', port: 3000 }, {
- *   storageDir: '/tmp/files'
+ *   resourceStoreUri: 'file:///tmp/files'
  * })
  * // => 'http://localhost:3000/files/abc123-report.pdf'
  */
 export function getFileUri(storedFilename: string, transport: TransportConfig | undefined, config: FileUriConfig): string {
   // Stdio or no transport: return file:// URI
   if (transport?.type === 'stdio' || !transport) {
-    const fullPath = resolve(join(config.storageDir, storedFilename));
-    return `file://${fullPath}`;
+    const outputDir = resolveResourceStorePath(config.resourceStoreUri);
+    const fullPath = resolve(join(outputDir, storedFilename));
+    return `${FILE_URI_PREFIX}${fullPath}`;
   }
 
   // HTTP transport: return http:// URI
