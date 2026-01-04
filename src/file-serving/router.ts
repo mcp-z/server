@@ -2,13 +2,13 @@ import express, { type Request, type Response, type Router } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { FileServingConfig, FileServingRouterOptions } from './types.ts';
-import { parseStoredName } from './utils.ts';
+import { parseStoredName, resolveResourceStorePath } from './utils.ts';
 
 // Default delimiter for parsing stored filenames (matches utils.ts default)
 const DEFAULT_DELIMITER = '~';
 
 /**
- * Create an Express router for serving files from a storage directory
+ * Create an Express router for serving files from a resource store
  *
  * Features:
  * - Path traversal protection
@@ -17,14 +17,14 @@ const DEFAULT_DELIMITER = '~';
  * - Configurable Content-Type and Content-Disposition headers
  * - Standard error responses (403, 404, 500)
  *
- * @param config - File serving configuration (storageDir, delimiter, generateId)
+ * @param config - File serving configuration (resourceStoreUri, delimiter, generateId)
  * @param options - Router options (contentType, contentDisposition)
  * @returns Express router ready to mount on an Express app
  *
  * @example
  * // Simple PDF server
  * const router = createFileServingRouter(
- *   { storageDir: '/tmp/pdfs' },
+ *   { resourceStoreUri: 'file:///tmp/pdfs' },
  *   { contentType: 'application/pdf', contentDisposition: 'attachment' }
  * );
  * app.use('/files', router);
@@ -32,7 +32,7 @@ const DEFAULT_DELIMITER = '~';
  * @example
  * // Multi-format server with dynamic content type and custom delimiter
  * const router = createFileServingRouter(
- *   { storageDir: '/tmp/exports', delimiter: '_' },
+ *   { resourceStoreUri: 'file:///tmp/exports', delimiter: '_' },
  *   {
  *     contentType: (filename) => {
  *       if (filename.endsWith('.pdf')) return 'application/pdf';
@@ -46,11 +46,11 @@ const DEFAULT_DELIMITER = '~';
  * app.use('/exports', router);
  */
 export function createFileServingRouter(config: FileServingConfig, options: FileServingRouterOptions): Router {
-  const { storageDir, delimiter = DEFAULT_DELIMITER } = config;
+  const { resourceStoreUri, delimiter = DEFAULT_DELIMITER } = config;
   const { contentType, contentDisposition = 'attachment' } = options;
 
   const router = express.Router();
-  const resolvedStorageDir = path.resolve(storageDir);
+  const resolvedStorageDir = resolveResourceStorePath(resourceStoreUri);
 
   router.get('/:filename', (req: Request, res: Response) => {
     try {
@@ -65,7 +65,7 @@ export function createFileServingRouter(config: FileServingConfig, options: File
       const filePath = path.join(resolvedStorageDir, filename);
 
       // Security: Prevent path traversal attacks
-      // Ensure the resolved file path is within the storage directory
+      // Ensure the resolved file path is within the resource store path
       if (!filePath.startsWith(resolvedStorageDir)) {
         res.status(403).send('Access denied');
         return;

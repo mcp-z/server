@@ -31,7 +31,7 @@
  * import { reserveFile, getFileUri } from '@mcp-z/server';
  *
  * const reservation = await reserveFile('export.csv', {
- *   storageDir: '/tmp/files'
+ *   resourceStoreUri: 'file:///tmp/files'
  * });
  *
  * const stream = createWriteStream(reservation.fullPath);
@@ -39,7 +39,7 @@
  * stream.end();
  *
  * const uri = getFileUri(reservation.storedName, transport, {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   baseUrl: config.baseUrl,
  *   endpoint: '/files'
  * });
@@ -49,11 +49,11 @@
  * import { writeFile, getFileUri } from '@mcp-z/server';
  *
  * const { storedName } = await writeFile(pdfBuffer, 'report.pdf', {
- *   storageDir: '/tmp/files'
+ *   resourceStoreUri: 'file:///tmp/files'
  * });
  *
  * const uri = getFileUri(storedName, transport, {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   baseUrl: config.baseUrl,
  *   endpoint: '/files'
  * });
@@ -63,7 +63,7 @@
  * import { createFileServingRouter } from '@mcp-z/server';
  *
  * const router = createFileServingRouter(
- *   { storageDir: config.storageDir },
+ *   { resourceStoreUri: config.resourceStoreUri },
  *   {
  *     contentType: 'application/pdf',
  *     contentDisposition: 'attachment',
@@ -76,7 +76,7 @@
  * import { nanoid } from 'nanoid';
  *
  * const reservation = await reserveFile('data.json', {
- *   storageDir: '/tmp/files',
+ *   resourceStoreUri: 'file:///tmp/files',
  *   delimiter: '_',
  *   generateId: () => nanoid(12)
  * });
