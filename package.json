@@ -1,6 +1,6 @@
 {
   "name": "@mcp-z/server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Shared utilities and server orchestration for building MCP (Model Context Protocol) servers",
   "keywords": [
     "mcp",
