@@ -54,13 +54,16 @@ export function createFileServingRouter(config: FileServingConfig, options: File
 
   router.get('/:filename', (req: Request, res: Response) => {
     try {
-      const { filename } = req.params;
+      const { filename: rawFilename } = req.params;
 
       // Validate filename exists
-      if (!filename) {
+      if (!rawFilename) {
         res.status(400).send('Bad request: filename parameter is required');
         return;
       }
+
+      // Handle filename as string (array case only happens with wildcard routes)
+      const filename = Array.isArray(rawFilename) ? rawFilename[0] : rawFilename;
 
       const filePath = path.join(resolvedStorageDir, filename);
 
