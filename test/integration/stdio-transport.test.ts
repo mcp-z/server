@@ -12,7 +12,8 @@ import { createServerRegistry, type ManagedClient, type ServerRegistry, type Ser
 import assert from 'assert';
 
 describe('stdio transport', () => {
-  let cluster: ServerRegistry | undefined;
+  // Always assigned in before(), which mocha runs ahead of every test.
+  let cluster!: ServerRegistry;
   const clients: ManagedClient[] = [];
 
   before(async () => {

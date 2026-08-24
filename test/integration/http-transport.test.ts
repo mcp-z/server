@@ -13,7 +13,8 @@ import assert from 'assert';
 import getPort from 'get-port';
 
 describe('HTTP transport', () => {
-  let cluster: ServerRegistry | undefined;
+  // Always assigned in before(), which mocha runs ahead of every test.
+  let cluster!: ServerRegistry;
   const clients: ManagedClient[] = [];
   let port: number;
   let url: string;
