@@ -21,7 +21,7 @@ describe('stdio transport', () => {
     const config: ServersConfig = {
       'echo-server': {
         command: 'node',
-        args: ['test/lib/servers/echo-server-stdio.ts'],
+        args: ['test/lib/servers/echo-server-stdio.mjs'],
       },
     };
 

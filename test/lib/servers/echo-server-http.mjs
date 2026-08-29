@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * Echo server using stdio transport with per-transport setup pattern
  *
@@ -11,22 +12,20 @@
  * - Process-based communication (stdin/stdout)
  * - Graceful shutdown on SIGINT/SIGTERM
  *
- * USAGE: node test/lib/servers/echo-server-stdio.ts
+ * USAGE: node test/lib/servers/echo-server-http.mjs
  */
 
+import { connectHttp, parseConfig, registerPrompts, registerResources, registerTools } from '@mcp-z/server';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import express from 'express';
 import { z } from 'zod';
-import type { Logger, PromptModule, ResourceModule, ToolModule } from '../../../src/index.ts';
-import { connectHttp, parseConfig, registerPrompts, registerResources, registerTools } from '../../../src/index.ts';
 
 const logger = {
   debug: () => {},
   info: () => {},
   warn: () => {},
   error: () => {},
-} as Logger;
+};
 
 async function main() {
   // Schema for wrapped-result tool (mirrors mcp-sheets pattern)
@@ -38,8 +37,7 @@ async function main() {
 
   const wrappedOutputSchema = z.discriminatedUnion('type', [successBranchSchema]);
 
-  // Define tools with explicit ToolModule type
-  const tools: ToolModule[] = [
+  const tools = [
     {
       name: 'echo',
       config: {
@@ -48,15 +46,15 @@ async function main() {
         inputSchema: { message: z.string() },
         outputSchema: { echo: z.string() },
       },
-      handler: async (args: { message: string }, _extra: Record<string, unknown>): Promise<CallToolResult> => {
+      handler: async (args) => {
         const { message } = args;
         const output = { echo: `Tool echo: ${message}` };
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(output) }],
+          content: [{ type: 'text', text: JSON.stringify(output) }],
           structuredContent: output,
         };
       },
-    } satisfies ToolModule,
+    },
     // Tool that mimics mcp-sheets pattern with z.object({ result: ... }) wrapper
     {
       name: 'wrapped-result',
@@ -69,22 +67,22 @@ async function main() {
           result: wrappedOutputSchema,
         }),
       },
-      handler: async (args: { message: string }, _extra: Record<string, unknown>): Promise<CallToolResult> => {
+      handler: async (args) => {
         const { message } = args;
         const result = {
-          type: 'success' as const,
+          type: 'success',
           message: `Wrapped echo: ${message}`,
           timestamp: new Date().toISOString(),
         };
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+          content: [{ type: 'text', text: JSON.stringify(result) }],
           structuredContent: { result },
         };
       },
-    } satisfies ToolModule,
+    },
   ];
 
-  const resources: ResourceModule[] = [
+  const resources = [
     {
       name: 'echo',
       template: new ResourceTemplate('echo://{message}', {
@@ -103,12 +101,12 @@ async function main() {
         title: 'Echo Resource',
         description: 'Echoes back messages as resources',
       },
-      handler: async (uri: URL, vars: Record<string, string | string[]>) => {
-        const { message } = vars as { message: string };
+      handler: async (uri, vars) => {
+        const { message } = vars;
         return {
           contents: [
             {
-              type: 'text' as const,
+              type: 'text',
               uri: uri.href,
               text: `Resource echo: ${message}`,
             },
@@ -119,15 +117,15 @@ async function main() {
   ];
 
   // Define prompts using factory functions
-  function createEchoPrompt(): PromptModule {
-    const handler = async (args: { message: string }) => {
+  function createEchoPrompt() {
+    const handler = async (args) => {
       const { message } = args;
       return {
         messages: [
           {
-            role: 'user' as const,
+            role: 'user',
             content: {
-              type: 'text' as const,
+              type: 'text',
               text: `Please process this message: ${message}`,
             },
           },
@@ -140,13 +138,13 @@ async function main() {
       config: {
         title: 'Echo Prompt',
         description: 'Creates a prompt to process a message',
-        argsSchema: { message: z.string() } as const,
+        argsSchema: { message: z.string() },
       },
       handler,
-    } satisfies PromptModule;
+    };
   }
 
-  const prompts: PromptModule[] = [createEchoPrompt()];
+  const prompts = [createEchoPrompt()];
 
   // create and configure MCP server instances
   const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' });
@@ -156,7 +154,7 @@ async function main() {
 
   // Parse transport config from CLI args
   const config = parseConfig(process.argv.slice(2), process.env);
-  const port = config.transport.port as number;
+  const port = config.transport.port;
 
   // Create Express app
   const app = express();

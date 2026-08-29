@@ -62,20 +62,20 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@mcp-z/client": "^1.0.5",
+    "@mcp-z/client": "^1.0.11",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.2.0",
     "@types/supertest": "^7.2.1",
-    "get-port": "^7.1.0",
+    "get-port": "5.1.1",
     "node-version-use": "^2.4.7",
     "supertest": "^7.1.4",
     "ts-dev-stack": "^1.22.1",
     "tsds-config": "^1.0.4"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "allowScripts": {
     "node-filename-to-dist-paths": true,
