@@ -1,8 +1,7 @@
 import assert from 'assert';
 import express, { type Express } from 'express';
 import { existsSync, mkdirSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { resolve } from 'path';
 import request from 'supertest';
 import { createFileServingRouter, writeFile } from '../../src/file-serving/index.ts';
 
@@ -11,7 +10,7 @@ describe('file-serving router', () => {
   let testDir: string;
 
   beforeEach(() => {
-    testDir = join(tmpdir(), `router-test-${Date.now()}`);
+    testDir = resolve('.tmp', `router-test-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
     app = express();
   });

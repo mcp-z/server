@@ -1,7 +1,6 @@
 import assert from 'assert';
 import { existsSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { getFileUri, parseStoredName, writeFile } from '../../src/file-serving/index.ts';
 import type { TransportConfig } from '../../src/types.ts';
 
@@ -106,7 +105,7 @@ describe('file-serving utilities', () => {
     let testDir: string;
 
     beforeEach(() => {
-      testDir = join(tmpdir(), `server-test-${Date.now()}`);
+      testDir = resolve('.tmp', `server-test-${Date.now()}`);
     });
 
     afterEach(() => {
@@ -143,7 +142,7 @@ describe('file-serving utilities', () => {
     });
 
     it('creates directory if it does not exist', async () => {
-      const newDir = join(tmpdir(), `server-new-${Date.now()}`);
+      const newDir = resolve('.tmp', `server-new-${Date.now()}`);
 
       try {
         assert.ok(!existsSync(newDir));
