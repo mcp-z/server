@@ -1,7 +1,6 @@
 # @mcp-z/server
 
-Docs: https://mcp-z.github.io/server
-Shared utilities for building MCP servers with stdio + HTTP transports, middleware composition, and file serving.
+Docs: https://mcp-z.github.io/server Shared utilities for building MCP servers with stdio + HTTP transports, middleware composition, and file serving.
 
 ## Common uses
 
