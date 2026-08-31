@@ -1,6 +1,7 @@
 import assert from 'assert';
 import express, { type Express } from 'express';
-import { existsSync, mkdirSync, rmSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import { resolve } from 'path';
 import request from 'supertest';
 import { createFileServingRouter, writeFile } from '../../src/file-serving/index.ts';
@@ -17,7 +18,7 @@ describe('file-serving router', () => {
 
   afterEach(() => {
     if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
+      safeRmSync(testDir, { recursive: true, force: true });
     }
   });
 

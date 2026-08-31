@@ -1,5 +1,6 @@
 import assert from 'assert';
-import { existsSync, rmSync } from 'fs';
+import { existsSync } from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import { join, resolve } from 'path';
 import { getFileUri, parseStoredName, writeFile } from '../../src/file-serving/index.ts';
 import type { TransportConfig } from '../../src/types.ts';
@@ -110,7 +111,7 @@ describe('file-serving utilities', () => {
 
     afterEach(() => {
       if (existsSync(testDir)) {
-        rmSync(testDir, { recursive: true, force: true });
+        safeRmSync(testDir, { recursive: true, force: true });
       }
     });
 
@@ -155,7 +156,7 @@ describe('file-serving utilities', () => {
         assert.ok(existsSync(result.fullPath));
       } finally {
         if (existsSync(newDir)) {
-          rmSync(newDir, { recursive: true, force: true });
+          safeRmSync(newDir, { recursive: true, force: true });
         }
       }
     });
