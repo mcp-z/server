@@ -1,5 +1,5 @@
+import { parseConfig } from '@mcp-z/server';
 import assert from 'assert';
-import { parseConfig } from '../../../src/transports/parse-config.ts';
 
 describe('transports/parse-config', () => {
   describe('parseConfig()', () => {
