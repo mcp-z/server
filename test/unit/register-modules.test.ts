@@ -5,9 +5,9 @@
  * to ensure correct delegation to McpServer registration methods.
  */
 
+import { type PromptModule, type ResourceModule, registerPrompts, registerResources, registerTools, type ToolModule } from '@mcp-z/server';
 import { type McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import assert from 'assert';
-import { type PromptModule, type ResourceModule, registerPrompts, registerResources, registerTools, type ToolModule } from '../../src/register-modules.ts';
 
 /**
  * Mock McpServer that tracks registration calls

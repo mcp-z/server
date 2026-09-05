@@ -721,4 +721,3 @@ if (config.transport.type === 'http') {
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - [@mcp-z/server README](README.md)
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development guidelines
-- [QUALITY.md](../../QUALITY.md) - Project quality principles

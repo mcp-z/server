@@ -1,9 +1,9 @@
+import type { TransportConfig } from '@mcp-z/server';
+import { getFileUri, parseStoredName, writeFile } from '@mcp-z/server';
 import assert from 'assert';
 import { existsSync } from 'fs';
 import { safeRmSync } from 'fs-remove-compat';
 import { join, resolve } from 'path';
-import { getFileUri, parseStoredName, writeFile } from '../../src/file-serving/index.ts';
-import type { TransportConfig } from '../../src/types.ts';
 
 describe('file-serving utilities', () => {
   describe('getFileUri', () => {

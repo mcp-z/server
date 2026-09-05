@@ -1,5 +1,5 @@
+import { createFieldsSchema, createPaginationSchema, createShapeSchema, filterFields, parseFields, toColumnarFormat } from '@mcp-z/server';
 import assert from 'assert';
-import { createFieldsSchema, createPaginationSchema, createShapeSchema, filterFields, parseFields, toColumnarFormat } from '../../../src/builders/schemas.ts';
 
 describe('builders/schemas', () => {
   describe('parseFields()', () => {

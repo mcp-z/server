@@ -1,10 +1,10 @@
+import { createFileServingRouter, writeFile } from '@mcp-z/server';
 import assert from 'assert';
 import express, { type Express } from 'express';
 import { existsSync, mkdirSync } from 'fs';
 import { safeRmSync } from 'fs-remove-compat';
 import { resolve } from 'path';
 import request from 'supertest';
-import { createFileServingRouter, writeFile } from '../../src/file-serving/index.ts';
 
 describe('file-serving router', () => {
   let app: Express;

@@ -1,6 +1,6 @@
 # @mcp-z/server
 
-Docs: https://mcp-z.github.io/server Shared utilities for building MCP servers with stdio + HTTP transports, middleware composition, and file serving.
+Shared utilities and server orchestration for building MCP (Model Context Protocol) servers
 
 ## Common uses
 
@@ -94,3 +94,7 @@ Helpers for consistent tool inputs and output shaping:
 ## Requirements
 
 - Node.js >= 24
+
+### Documentation
+
+[API Docs](https://mcp-z.github.io/server)
