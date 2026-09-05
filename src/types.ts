@@ -65,4 +65,24 @@ export interface SetupStdioTransportResult {
 export interface CreateHttpMcpRouterOptions {
   mcpServer: McpServer;
   logger: Logger;
+  /**
+   * Port the HTTP server is bound to. Used to derive the loopback Origin/Host
+   * allow-list for DNS rebinding protection (see `getLoopbackOrigins` /
+   * `getLoopbackHosts` in `transports/http.ts`).
+   */
+  port: number;
+  /**
+   * Extra Origin header values to accept, added to the loopback set for `port`.
+   * For a server deployed behind a public hostname (an operator-configured
+   * `--base-url`/`BASE_URL`), pass that origin here - it is the deployer's
+   * explicit declaration of the server's public identity. Loopback access
+   * (local dev tools, health checks run on the box itself) keeps working
+   * either way, since these are additive, not a replacement.
+   */
+  allowedOrigins?: string[];
+  /**
+   * Extra Host header values to accept, added to the loopback set for `port`.
+   * See `allowedOrigins` - same reasoning, same additive behavior.
+   */
+  allowedHosts?: string[];
 }
