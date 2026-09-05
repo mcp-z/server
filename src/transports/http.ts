@@ -5,24 +5,35 @@ import express, { type Request, type Response } from 'express';
 import * as http from 'http';
 import type { CreateHttpMcpRouterOptions, Logger, SetupHttpTransportResult } from '../types.ts';
 
-/**
- * Create configured Express router for MCP HTTP endpoints
- *
- * Path Convention: Always mount at '/mcp' per MCP server convention
- * Example: app.use('/mcp', router)
- *
- * Returns a router ready to mount on an Express app
- */
-export function createHttpMcpRouter({ mcpServer, logger }: CreateHttpMcpRouterOptions): express.Router {
-  const router = express.Router();
+// Loopback hostnames a locally-run server treats as same-machine callers for DNS
+// rebinding protection; anything else is untrusted by default.
+const LOOPBACK_HOSTNAMES = ['127.0.0.1', 'localhost', '[::1]'];
 
-  // MCP-specific CORS configuration
+/** Origin allow-list for DNS rebinding protection: every loopback hostname on `port`, over http and https. */
+export function getLoopbackOrigins(port: number): string[] {
+  return LOOPBACK_HOSTNAMES.flatMap((host) => [`http://${host}:${port}`, `https://${host}:${port}`]);
+}
+
+/** Host allow-list for DNS rebinding protection: every loopback hostname on `port`. */
+export function getLoopbackHosts(port: number): string[] {
+  return LOOPBACK_HOSTNAMES.map((host) => `${host}:${port}`);
+}
+
+/** Creates the Express router for the MCP HTTP endpoints, mounted by the caller at `/mcp`. */
+export function createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins: extraOrigins, allowedHosts: extraHosts }: CreateHttpMcpRouterOptions): express.Router {
+  const router = express.Router();
+  // Loopback access is additive: it keeps working even when the deployment also allows its public base URL.
+  const allowedOrigins = [...getLoopbackOrigins(port), ...(extraOrigins ?? [])];
+  const allowedHosts = [...getLoopbackHosts(port), ...(extraHosts ?? [])];
+
+  // An allow-list, not '*': cors only reflects Access-Control-Allow-Origin for a matching
+  // Origin, so this only affects what browser JS can read. DNS rebinding protection itself
+  // (403 for any present-but-invalid Origin, for every caller) is the transport's job below.
   router.use(
     cors({
-      origin: '*',
-      // Stateless: no session id is ever issued, so there is nothing to expose.
-      // 'authorization' is required for the DCR bearer flow; 'mcp-protocol-version'
-      // is required on HTTP requests as of spec 2025-06-18.
+      origin: allowedOrigins,
+      // 'authorization' is required for the DCR bearer flow; 'mcp-protocol-version' is
+      // required on HTTP requests as of spec 2025-06-18.
       allowedHeaders: ['content-type', 'authorization', 'mcp-protocol-version'],
     })
   );
@@ -31,6 +42,11 @@ export function createHttpMcpRouter({ mcpServer, logger }: CreateHttpMcpRouterOp
     try {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
+        // Spec (Streamable HTTP transport, MUST): validate Origin on every request to
+        // prevent DNS rebinding. Only a present-and-invalid Origin is rejected (403).
+        enableDnsRebindingProtection: true,
+        allowedOrigins,
+        allowedHosts,
       });
 
       res.on('close', () => {
@@ -87,33 +103,21 @@ export function createHttpMcpRouter({ mcpServer, logger }: CreateHttpMcpRouterOp
 }
 
 /**
- * Sets up HTTP transport for an existing MCP server
- *
- * Low-level function that handles HTTP server creation, router mounting, and port binding.
- * Path is always '/mcp' per MCP convention.
+ * Sets up HTTP transport for an MCP server: creates the router, mounts it at `/mcp`,
+ * and binds an HTTP server.
  *
  * @param mcpServer - The MCP server instance to connect transport to
- * @param options - Configuration for HTTP transport
+ * @param options.host - Interface to bind to (spec SHOULD: loopback-only); pass `'0.0.0.0'` only for a deployment that genuinely needs it, e.g. behind a reverse proxy
+ * @param options.allowedOrigins - Extra Origin values to accept, added to the loopback set for `port`
+ * @param options.allowedHosts - Extra Host values to accept, added to the loopback set for `port`
  * @returns HTTP server instance
- *
- * @example
- * ```typescript
- * const mcpServer = new McpServer({ name: 'my-server', version: '1.0.0' });
- * const { close, httpServer } = await connectHttp(mcpServer, {
- *   logger,
- *   app,
- *   port: 3000
- * });
- * ```
  */
-export async function connectHttp(mcpServer: McpServer, options: { logger: Logger; app: express.Application; port: number }): Promise<SetupHttpTransportResult> {
-  const { logger, app, port } = options;
+export async function connectHttp(mcpServer: McpServer, options: { logger: Logger; app: express.Application; port: number; host?: string; allowedOrigins?: string[]; allowedHosts?: string[] }): Promise<SetupHttpTransportResult> {
+  const { logger, app, port, host = '127.0.0.1', allowedOrigins, allowedHosts } = options;
 
-  // Create and mount MCP router
-  const router = createHttpMcpRouter({ mcpServer, logger });
-  app.use('/mcp', router); // Path is always '/mcp' per MCP convention
+  const router = createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins, allowedHosts });
+  app.use('/mcp', router);
 
-  // Create HTTP server with error handling
   const httpServer = http.createServer(app);
 
   await new Promise<void>((resolve, reject) => {
@@ -125,9 +129,9 @@ export async function connectHttp(mcpServer: McpServer, options: { logger: Logge
       }
     });
 
-    httpServer.listen(port, () => {
+    httpServer.listen(port, host, () => {
       httpServer.removeAllListeners('error');
-      logger.info(`HTTP transport ready on port ${port} at /mcp`);
+      logger.info(`HTTP transport ready on ${host}:${port} at /mcp`);
       resolve();
     });
   });
