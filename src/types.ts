@@ -1,5 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import type * as http from 'http';
 
 export type Logger = Pick<Console, 'info' | 'error' | 'warn' | 'debug'>;
@@ -58,7 +57,6 @@ export interface SetupHttpTransportResult {
 }
 
 export interface SetupStdioTransportResult {
-  transport: StdioServerTransport;
   close: () => Promise<void>;
 }
 

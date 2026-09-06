@@ -4,7 +4,7 @@
  */
 
 import { connectHttp, createHttpMcpRouter, type Logger } from '@mcp-z/server';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import assert from 'assert';
 import express from 'express';
 import getPort from 'get-port';

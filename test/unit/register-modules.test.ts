@@ -6,8 +6,9 @@
  */
 
 import { type PromptModule, type ResourceModule, registerPrompts, registerResources, registerTools, type ToolModule } from '@mcp-z/server';
-import { type McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { type McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
 import assert from 'assert';
+import { z } from 'zod';
 
 /**
  * Mock McpServer that tracks registration calls
@@ -43,10 +44,11 @@ describe('register-modules', () => {
     it('registers single tool module', () => {
       const { server, calls } = createMockServer();
       const handler = async () => ({ content: [] });
+      const config = { inputSchema: z.object({}), outputSchema: z.object({}) };
       const tools: ToolModule[] = [
         {
           name: 'test-tool',
-          config: { inputSchema: {}, outputSchema: {} },
+          config,
           handler,
         },
       ];
@@ -57,7 +59,7 @@ describe('register-modules', () => {
       const firstTool = calls.tools[0];
       assert.ok(firstTool, 'Should have first tool');
       assert.strictEqual(firstTool.name, 'test-tool');
-      assert.deepStrictEqual(firstTool.config, { inputSchema: {}, outputSchema: {} });
+      assert.strictEqual(firstTool.config, config);
       assert.strictEqual(firstTool.handler, handler);
     });
 
@@ -68,12 +70,12 @@ describe('register-modules', () => {
       const tools: ToolModule[] = [
         {
           name: 'tool-1',
-          config: { inputSchema: {}, outputSchema: {} },
+          config: { inputSchema: z.object({}), outputSchema: z.object({}) },
           handler: handler1,
         },
         {
           name: 'tool-2',
-          config: { inputSchema: {}, outputSchema: {} },
+          config: { inputSchema: z.object({}), outputSchema: z.object({}) },
           handler: handler2,
         },
       ];
