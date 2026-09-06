@@ -61,7 +61,7 @@
     "zod": "^4.2.0"
   },
   "devDependencies": {
-    "@mcp-z/client": "^1.0.11",
+    "@mcp-z/client": "^2.0.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
