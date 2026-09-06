@@ -19,14 +19,14 @@ npm install @mcp-z/server
 Peer dependencies:
 
 ```bash
-npm install @modelcontextprotocol/sdk express
+npm install @modelcontextprotocol/server @modelcontextprotocol/node express
 ```
 
 ## Quick start
 
 ```ts
 import express from 'express';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { parseConfig, connectStdio, connectHttp } from '@mcp-z/server';
 
 const mcpServer = new McpServer({ name: 'my-server', version: '1.0.0' });

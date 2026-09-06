@@ -254,7 +254,7 @@ function toErrorBranch(
 
 **Pattern**:
 ```typescript
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { ProtocolError, ProtocolErrorCode } from '@modelcontextprotocol/server';
 
 try {
   const data = await fetchData();
@@ -263,11 +263,11 @@ try {
     structuredContent: data,
   };
 } catch (error) {
-  if (error instanceof McpError) {
+  if (error instanceof ProtocolError) {
     throw error;
   }
   const message = error instanceof Error ? error.message : String(error);
-  throw new McpError(ErrorCode.InternalError, `Error: ${message}`);
+  throw new ProtocolError(ProtocolErrorCode.InternalError, `Error: ${message}`);
 }
 ```
 
@@ -293,7 +293,7 @@ try {
 
 ### Current Standard
 
-**Pattern**: Use inline structuredContent with McpError for errors.
+**Pattern**: Use inline structuredContent with ProtocolError for errors.
 
 **Why both fields?**
 - `content` - Required by MCP protocol specification
@@ -301,7 +301,7 @@ try {
 
 **Implementation**:
 ```typescript
-import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { ProtocolError, ProtocolErrorCode } from '@modelcontextprotocol/server';
 
 async function handler(params: Input): Promise<CallToolResult> {
   try {
@@ -313,14 +313,14 @@ async function handler(params: Input): Promise<CallToolResult> {
       structuredContent: result,
     };
   } catch (error) {
-    // Re-throw McpError as-is
-    if (error instanceof McpError) {
+    // Re-throw ProtocolError as-is
+    if (error instanceof ProtocolError) {
       throw error;
     }
 
-    // Wrap other errors in McpError
+    // Wrap other errors in ProtocolError
     const message = error instanceof Error ? error.message : String(error);
-    throw new McpError(ErrorCode.InternalError, `Error: ${message}`, {
+    throw new ProtocolError(ProtocolErrorCode.InternalError, `Error: ${message}`, {
       stack: error instanceof Error ? error.stack : undefined,
     });
   }

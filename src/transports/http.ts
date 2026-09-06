@@ -1,5 +1,5 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
+import type { McpServer } from '@modelcontextprotocol/server';
 import cors from 'cors';
 import express, { type Request, type Response } from 'express';
 import * as http from 'http';
@@ -40,7 +40,7 @@ export function createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins: e
 
   router.post('/', async (req: Request, res: Response) => {
     try {
-      const transport = new StreamableHTTPServerTransport({
+      const transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         // Spec (Streamable HTTP transport, MUST): validate Origin on every request to
         // prevent DNS rebinding. Only a present-and-invalid Origin is rejected (403).

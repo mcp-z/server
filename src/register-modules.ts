@@ -1,30 +1,21 @@
-import type { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { AnySchema, ZodRawShapeCompat } from '@modelcontextprotocol/sdk/server/zod-compat.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type { CallToolResult, ServerNotification, ServerRequest, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer, ResourceTemplate, ServerContext, StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server';
+import type { z } from 'zod';
 import type { ResourceConfig } from './types.ts';
 
 /**
  * Tool config signature - explicit structural type mirroring SDK registerTool config
  *
- * Uses explicit structure instead of Parameters<> extraction to avoid TypeScript inference
- * collapse to 'never' when using ToolModule[] arrays. The deep conditional types from
- * Parameters<> cannot be unified across array elements.
- *
- * Validated against SDK signature for compatibility - compile errors if SDK changes.
+ * Uses explicit structure instead of Parameters<> extraction, which collapses to 'never'
+ * across ToolModule[] arrays.
  */
 export type ToolConfig = {
   title?: string;
   description?: string;
-  inputSchema?: ZodRawShapeCompat | AnySchema;
-  outputSchema?: ZodRawShapeCompat | AnySchema;
+  inputSchema?: StandardSchemaWithJSON;
+  outputSchema?: StandardSchemaWithJSON;
   annotations?: ToolAnnotations;
   _meta?: Record<string, unknown>;
 };
-
-// Compile-time validation that ToolConfig is compatible with SDK
-type _ValidateToolConfigAssignable = ToolConfig extends Parameters<McpServer['registerTool']>[1] ? true : never;
-type _ValidateToolConfigReceivable = Parameters<McpServer['registerTool']>[1] extends ToolConfig ? true : never;
 
 /**
  * Type-safe wrapper for CallToolResult with typed structuredContent.
@@ -47,12 +38,12 @@ export type TypedToolResult<T> = Omit<CallToolResult, 'structuredContent'> & {
  * Tool handler signature with generic support for middleware.
  *
  * @template TArgs - Tool arguments type (default: unknown for SDK compatibility)
- * @template TExtra - Request handler extra type (default: RequestHandlerExtra from SDK)
+ * @template TExtra - Request handler extra type (default: ServerContext from SDK)
  *
  * Defaults provide SDK-extracted types for compatibility with MCP SDK.
  * Generic parameters enable type-safe middleware transformation.
  */
-export type ToolHandler<TArgs = unknown, TExtra = RequestHandlerExtra<ServerRequest, ServerNotification>> = (args: TArgs, extra: TExtra) => Promise<CallToolResult>;
+export type ToolHandler<TArgs = unknown, TExtra = ServerContext> = (args: TArgs, extra: TExtra) => Promise<CallToolResult>;
 
 export type ResourceHandler = Parameters<McpServer['registerResource']>[3];
 export type PromptHandler = Parameters<McpServer['registerPrompt']>[2];
@@ -66,7 +57,7 @@ export type PromptHandler = Parameters<McpServer['registerPrompt']>[2];
 export type PromptConfig = {
   title?: string;
   description?: string;
-  argsSchema?: ZodRawShapeCompat;
+  argsSchema?: Record<string, z.ZodType>;
 };
 
 // Compile-time validation

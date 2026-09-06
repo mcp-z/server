@@ -16,7 +16,7 @@
  */
 
 import { connectStdio, registerPrompts, registerResources, registerTools } from '@mcp-z/server';
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 const logger = {
@@ -42,8 +42,8 @@ async function main() {
       config: {
         title: 'Echo Tool',
         description: 'Echoes back the provided message',
-        inputSchema: { message: z.string() },
-        outputSchema: { echo: z.string() },
+        inputSchema: z.object({ message: z.string() }),
+        outputSchema: z.object({ echo: z.string() }),
       },
       handler: async (args) => {
         const { message } = args;
@@ -60,7 +60,7 @@ async function main() {
       config: {
         title: 'Wrapped Result Tool',
         description: 'Returns structuredContent wrapped in result property (mcp-sheets pattern)',
-        inputSchema: { message: z.string() },
+        inputSchema: z.object({ message: z.string() }),
         // This is the pattern used by mcp-sheets tools: z.object({ result: ... })
         outputSchema: z.object({
           result: wrappedOutputSchema,
