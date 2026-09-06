@@ -1,3 +1,13 @@
+// The SDK surface consumers need, re-exported so they never import the SDK directly.
+// That keeps which SDK backs this package an implementation detail, and it is what makes
+// the 1.x -> 2.x upgrade two non-breaking steps instead of one breaking one: move to these
+// re-exports on 1.x first, then take 2.x, where the same names resolve to the v2 SDK.
+
+export { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+export type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+export type { CallToolResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
+export { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+
 // Builders
 export * from './builders/schemas.ts';
 // File serving utilities

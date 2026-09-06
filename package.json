@@ -48,30 +48,30 @@
     "build": "tsds validate",
     "format": "tsds format",
     "prepublish:check": "ncp",
-    "prepublishOnly": "tsds validate",
+    "prepublishOnly": "node scripts/require-dist-tag.cjs && tsds validate",
     "test": "tsds test:node --no-timeouts",
     "test:engines": "nvu engines tsds test:node --no-timeouts",
     "version": "tsds version"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "cors": "^2.0.0",
-    "express": "^5.0.0",
-    "zod": "^4.0.0"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@mcp-z/client": "^1.0.11",
+    "@mcp-z/client": "^1.2.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.1",
     "@types/supertest": "^7.2.1",
-    "fs-remove-compat": "^1.0.4",
+    "fs-remove-compat": "^1.0.5",
     "get-port": "5.1.1",
-    "node-version-use": "^2.4.7",
-    "supertest": "^7.1.4",
-    "ts-dev-stack": "^1.22.1",
-    "tsds-config": "^1.0.4"
+    "node-version-use": "^2.5.8",
+    "supertest": "^7.2.2",
+    "ts-dev-stack": "^1.22.6",
+    "tsds-config": "^1.0.5"
   },
   "engines": {
     "node": ">=20"
