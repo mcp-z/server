@@ -120,14 +120,33 @@ export type ToolFactory<TDeps extends unknown[] = unknown[]> = (...deps: TDeps) 
 export type ResourceFactory<TDeps extends unknown[] = unknown[]> = (...deps: TDeps) => ResourceModule;
 export type PromptFactory<TDeps extends unknown[] = unknown[]> = (...deps: TDeps) => PromptModule;
 
+/** Sorts a copy by `name`, leaving the caller's array untouched. */
+function byName<T extends { name: string }>(modules: T[]): T[] {
+  return [...modules].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
+/**
+ * Registered in name order, not the order the caller happened to pass.
+ *
+ * The 2026-07-28 revision requires list results to be deterministic so a client
+ * can keep an upstream prompt cache stable across reconnects. Iterating the
+ * caller's array is already stable within a process, but only incidentally —
+ * it inherits whatever order a module index produced. Sorting states the
+ * guarantee instead of relying on it. The caller's array is not mutated.
+ *
+ * The spec permits a list to vary by the authorization on the request, but not
+ * per connection. Ours varies by neither: `withToolAuth` wraps the handler, not
+ * the metadata.
+ */
 export function registerTools(server: McpServer, tools: ToolModule[]): void {
-  for (const tool of tools) {
+  for (const tool of byName(tools)) {
     server.registerTool(tool.name, tool.config, tool.handler as ToolHandler);
   }
 }
 
+/** Registered in name order; see registerTools. */
 export function registerResources(server: McpServer, resources: ResourceModule[]): void {
-  for (const resource of resources) {
+  for (const resource of byName(resources)) {
     if (!resource.template) {
       throw new Error(`Resource "${resource.name}" must have a template`);
     }
@@ -135,8 +154,9 @@ export function registerResources(server: McpServer, resources: ResourceModule[]
   }
 }
 
+/** Registered in name order; see registerTools. */
 export function registerPrompts(server: McpServer, prompts: PromptModule[]): void {
-  for (const prompt of prompts) {
+  for (const prompt of byName(prompts)) {
     server.registerPrompt(prompt.name, prompt.config, prompt.handler as PromptHandler);
   }
 }
