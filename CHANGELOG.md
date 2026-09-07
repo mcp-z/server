@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.2] - 2026-09-06
+
+Re-publish of 1.3.1; identical content.
+
 ## [1.3.1] - 2026-09-06
 
 ### Fixed
