@@ -1,10 +1,16 @@
 # Changelog
 
+## [1.3.1] - 2026-09-06
+
+### Fixed
+
+- `ErrorCode` is this package's own type again. 1.3.0 also re-exported the SDK's `ErrorCode`, and an explicit re-export beats `export *`, so it shadowed the `'INVALID_ARGUMENT' | 'NOT_FOUND' | ...` union that `ErrorBranch.code` uses — importing `ErrorCode` from here returned the SDK enum instead. The SDK's is no longer re-exported; reach it through `McpError` or import it from the SDK directly.
+
 ## [1.3.0] - 2026-09-06
 
 ### Added
 
-- Re-exports the MCP SDK surface consumers need — `McpServer`, `ResourceTemplate`, `McpError`, `ErrorCode`, and the `CallToolResult` / `ReadResourceResult` / `RequestHandlerExtra` types — so they need not import `@modelcontextprotocol/sdk` directly. This makes the 2.x upgrade two non-breaking steps instead of one breaking one: adopt these names here, then take 2.x, where the same names resolve to the v2 SDK and its renames are absorbed by this package. Purely additive; nothing existing changes.
+- Re-exports the MCP SDK surface consumers need — `McpServer`, `ResourceTemplate`, `McpError`, and the `CallToolResult` / `ReadResourceResult` / `RequestHandlerExtra` types — so they need not import `@modelcontextprotocol/sdk` directly. This makes the 2.x upgrade two non-breaking steps instead of one breaking one: adopt these names here, then take 2.x, where the same names resolve to the v2 SDK and its renames are absorbed by this package. Purely additive; nothing existing changes.
 
 ## [1.2.0] - 2026-09-05
 
