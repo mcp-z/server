@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.2.0] - 2026-09-07
+
+### Added
+
+- `defaultCacheHints`, a cache policy for the 2026-07-28 revision's cacheable results, to pass as `new McpServer(info, { cacheHints: defaultCacheHints })`. Catalog operations (`tools/list`, `prompts/list`, `resources/templates/list`, `server/discover`) get a five-minute TTL and `cacheScope: 'public'`; `resources/list` and `resources/read` stay `private` with no TTL, since those vary by account. Without it the SDK defaults every cacheable result to `ttlMs: 0` / `private`, which is correct but caches nothing. Spread the object to override a single operation. 2025-era responses are unaffected.
+- `CacheableResultMethod` and the SDK's `CacheHint` type are re-exported for anyone writing their own policy.
+
+### Changed
+
+- `registerTools`, `registerResources` and `registerPrompts` now register in name order rather than the order of the array passed to them. `tools/list` and its siblings therefore return the same order from any two servers built from the same modules, which is what a 2026-07-28 client needs to keep a cached catalog valid across a reconnect. A server whose modules were already listed alphabetically sees no change; any other server sees its list reordered once. The array passed in is not mutated.
+
 ## [2.1.1] - 2026-09-06
 
 Documentation only; the code is identical to 2.1.0.

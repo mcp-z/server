@@ -4,7 +4,7 @@
  * dual-era serving (a 2025 client and a 2026-07-28 client against the same router).
  */
 
-import { connectHttp, createHttpMcpRouter, type Logger } from '@mcp-z/server';
+import { connectHttp, createHttpMcpRouter, defaultCacheHints, type Logger } from '@mcp-z/server';
 import { Client as ModernClient, StreamableHTTPClientTransport as ModernStreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport as LegacyStreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -373,7 +373,10 @@ describe('transports/http', () => {
   // server/discover-negotiated connection) with no divergence in tool definitions or results.
   describe('dual-era serving (createMcpHandler)', () => {
     const buildEchoServer = () => {
-      const mcpServer = new McpServer({ name: 'dual-era-test', version: '1.0.0' });
+      // The hint travels on a symbol-keyed property only the 2026 codec reads, so
+      // one configured server proves both halves: fields present for a modern client,
+      // absent for a legacy one.
+      const mcpServer = new McpServer({ name: 'dual-era-test', version: '1.0.0' }, { cacheHints: defaultCacheHints });
       mcpServer.registerTool(
         'echo',
         {
@@ -430,6 +433,10 @@ describe('transports/http', () => {
         assertLocalRefs(echoTool?.inputSchema, 'inputSchema');
         assertLocalRefs(echoTool?.outputSchema, 'outputSchema');
 
+        const listed = (await client.listTools()) as Record<string, unknown>;
+        assert.strictEqual(listed.ttlMs, undefined, 'a 2025 result must not carry ttlMs');
+        assert.strictEqual(listed.cacheScope, undefined, 'a 2025 result must not carry cacheScope');
+
         const result = await client.callTool({ name: 'echo', arguments: { message: 'legacy' } });
         const structured = result.structuredContent as { echo?: string } | undefined;
         assert.strictEqual(structured?.echo, 'echo: legacy');
@@ -452,6 +459,10 @@ describe('transports/http', () => {
         assert.ok(echoTool, 'modern client should see the echo tool');
         assertLocalRefs(echoTool?.inputSchema, 'inputSchema');
         assertLocalRefs(echoTool?.outputSchema, 'outputSchema');
+
+        const listed = (await client.listTools()) as Record<string, unknown>;
+        assert.strictEqual(listed.cacheScope, 'public', 'tools/list is identical for every caller');
+        assert.ok(typeof listed.ttlMs === 'number' && listed.ttlMs > 0, `tools/list should carry a positive TTL, got ${String(listed.ttlMs)}`);
 
         const result = await client.callTool({ name: 'echo', arguments: { message: 'modern' } });
         const structured = result.structuredContent as { echo?: string } | undefined;

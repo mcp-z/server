@@ -15,7 +15,7 @@
  * USAGE: node test/lib/servers/echo-server-stdio.mjs
  */
 
-import { connectStdio, registerPrompts, registerResources, registerTools } from '@mcp-z/server';
+import { connectStdio, defaultCacheHints, registerPrompts, registerResources, registerTools } from '@mcp-z/server';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
@@ -149,7 +149,10 @@ async function main() {
   // lifetime: the same tool/resource/prompt definitions serve both the 2026-07-28
   // era (server/discover-negotiated) and the 2025-era initialize handshake.
   const buildServer = () => {
-    const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' });
+    // The hint travels on a symbol-keyed property only the 2026 codec reads, so
+    // one configured server proves both halves: test/unit/transports/stdio.test.ts
+    // asserts the fields are present for a modern client and absent for a legacy one.
+    const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' }, { cacheHints: defaultCacheHints });
     registerTools(mcpServer, tools);
     registerResources(mcpServer, resources);
     registerPrompts(mcpServer, prompts);

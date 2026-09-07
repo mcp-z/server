@@ -32,6 +32,12 @@ describe('transports/stdio', () => {
         const result = await client.callTool({ name: 'echo', arguments: { message: 'legacy-stdio' } });
         const structured = result.structuredContent as { echo?: string } | undefined;
         assert.strictEqual(structured?.echo, 'Tool echo: legacy-stdio');
+
+        // The server configures cacheHints, but 2025 has no cache fields at all.
+        // Emitting them here would be a protocol violation, not a stray extra key.
+        const listed = (await client.listTools()) as Record<string, unknown>;
+        assert.strictEqual(listed.ttlMs, undefined, 'a 2025 result must not carry ttlMs');
+        assert.strictEqual(listed.cacheScope, undefined, 'a 2025 result must not carry cacheScope');
       } finally {
         await client.close();
       }
@@ -52,6 +58,11 @@ describe('transports/stdio', () => {
         const result = await client.callTool({ name: 'echo', arguments: { message: 'modern-stdio' } });
         const structured = result.structuredContent as { echo?: string } | undefined;
         assert.strictEqual(structured?.echo, 'Tool echo: modern-stdio');
+
+        // defaultCacheHints reaching the wire, rather than the SDK's ttlMs: 0 / private default.
+        const listed = (await client.listTools()) as Record<string, unknown>;
+        assert.strictEqual(listed.cacheScope, 'public', 'tools/list is identical for every caller');
+        assert.ok(typeof listed.ttlMs === 'number' && listed.ttlMs > 0, `tools/list should carry a positive TTL, got ${String(listed.ttlMs)}`);
       } finally {
         await client.close();
       }

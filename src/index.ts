@@ -2,12 +2,14 @@
 // That keeps which SDK backs this package an implementation detail: a future SDK swap
 // changes this file rather than every consumer's imports.
 
-export type { CallToolResult, ReadResourceResult, ServerContext, StandardSchemaWithJSON } from '@modelcontextprotocol/server';
+export type { CacheHint, CallToolResult, ReadResourceResult, ServerContext, StandardSchemaWithJSON } from '@modelcontextprotocol/server';
 export { McpServer, ProtocolError, ProtocolErrorCode, ResourceTemplate } from '@modelcontextprotocol/server';
 // Builders
 export * from './builders/schemas.ts';
 // File serving utilities
 export * from './file-serving/index.ts';
+// Cache hints for 2026-07-28 cacheable results
+export { type CacheableResultMethod, defaultCacheHints } from './lib/cache-hints.ts';
 // Config helpers
 export { default as findConfigPath, type FindConfigOptions } from './lib/find-config-path.ts';
 export * from './middleware/composer.ts';
