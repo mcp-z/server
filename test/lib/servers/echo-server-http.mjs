@@ -146,11 +146,15 @@ async function main() {
 
   const prompts = [createEchoPrompt()];
 
-  // create and configure MCP server instances
-  const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' });
-  registerTools(mcpServer, tools);
-  registerResources(mcpServer, resources);
-  registerPrompts(mcpServer, prompts);
+  // Factory called once per request by createMcpHandler: the same tool/resource/prompt
+  // definitions serve both the 2026-07-28 path and the 2025-era stateless fallback.
+  const buildServer = () => {
+    const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' });
+    registerTools(mcpServer, tools);
+    registerResources(mcpServer, resources);
+    registerPrompts(mcpServer, prompts);
+    return mcpServer;
+  };
 
   // Parse transport config from CLI args
   const config = parseConfig(process.argv.slice(2), process.env);
@@ -161,7 +165,7 @@ async function main() {
 
   // Setup HTTP server using high-level API
   logger.info('Starting MCP server (http)');
-  const { close } = await connectHttp(mcpServer, { logger, app, port });
+  const { close } = await connectHttp(buildServer, { logger, app, port });
   logger.info('http transport ready');
 
   // Graceful shutdown

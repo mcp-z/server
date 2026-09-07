@@ -145,15 +145,20 @@ async function main() {
 
   const prompts = [createEchoPrompt()];
 
-  // create and configure MCP server instances
-  const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' });
-  registerTools(mcpServer, tools);
-  registerResources(mcpServer, resources);
-  registerPrompts(mcpServer, prompts);
+  // Factory called by serveStdio to build the instance pinned for the connection's
+  // lifetime: the same tool/resource/prompt definitions serve both the 2026-07-28
+  // era (server/discover-negotiated) and the 2025-era initialize handshake.
+  const buildServer = () => {
+    const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' });
+    registerTools(mcpServer, tools);
+    registerResources(mcpServer, resources);
+    registerPrompts(mcpServer, prompts);
+    return mcpServer;
+  };
 
   // Setup stdio server using high-level API
   logger.info('Starting MCP server (stdio)');
-  const { close } = await connectStdio(mcpServer, { logger });
+  const { close } = await connectStdio(buildServer, { logger });
   logger.info('stdio transport ready');
 
   // Graceful shutdown
