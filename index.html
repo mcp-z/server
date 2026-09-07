@@ -32,19 +32,22 @@
 
 <h2 id="protocol-versions" class="tsd-anchor-link">Protocol versions<a href="#protocol-versions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p><code>connectHttp</code> and <code>connectStdio</code> serve both the 2025 and 2026-07-28 MCP protocol revisions from
-the same server definitions, on the same HTTP endpoint and the same stdio connection — no
-configuration selects a revision. A legacy 2025 client keeps working unchanged; support for it is
-not being dropped.</p>
-<p>The 2026-07-28 revision is stateless: a client speaking it sends no <code>initialize</code> handshake, so the
-server needs a fresh <code>McpServer</code> per request (HTTP) or per connection (stdio) rather than one
-shared instance. To support this, <code>connectHttp</code>, <code>connectStdio</code>, and <code>createHttpMcpRouter</code> accept
-either a ready-made <code>McpServer</code> instance — as in the Quick start example above, which keeps working
-unchanged — or a factory function that builds one:</p>
+the same server definitions, on the same HTTP endpoint and the same stdio connection. A legacy
+2025 client keeps working unchanged; support for it is not being dropped.</p>
+<p><strong>Serving both revisions requires a factory, not an <code>McpServer</code> instance.</strong> The 2026-07-28
+revision is stateless — a client speaking it sends no <code>initialize</code> handshake — and the SDK caches
+the negotiated revision on the <code>McpServer</code> instance. Its own documentation puts it plainly: once a
+version is negotiated, <em>&quot;a negotiated session never re-routes a method onto the other era.&quot;</em> So a
+single shared instance pins itself to whichever revision reaches it first and answers the other
+with <code>-32601 Method not found</code>. A factory hands every request (HTTP) or connection (stdio) a
+fresh, un-negotiated instance, so each one negotiates for itself:</p>
 <pre><code class="ts"><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-0">buildServer</span><span class="hl-1"> = () </span><span class="hl-5">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">mcpServer</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">McpServer</span><span class="hl-1">({ </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;my-server&#39;</span><span class="hl-1">, </span><span class="hl-4">version:</span><span class="hl-1"> </span><span class="hl-2">&#39;1.0.0&#39;</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-8">// register tools/resources/prompts on mcpServer</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">mcpServer</span><span class="hl-1">;</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">connectStdio</span><span class="hl-1">(</span><span class="hl-4">buildServer</span><span class="hl-1">, { </span><span class="hl-4">logger:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1"> });</span><br/><span class="hl-8">// or</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">connectHttp</span><span class="hl-1">(</span><span class="hl-4">buildServer</span><span class="hl-1">, { </span><span class="hl-4">logger:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">, </span><span class="hl-4">app</span><span class="hl-1">, </span><span class="hl-4">port:</span><span class="hl-1"> </span><span class="hl-4">config</span><span class="hl-1">.</span><span class="hl-4">transport</span><span class="hl-1">.</span><span class="hl-4">port</span><span class="hl-1"> });</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Passing an instance is still correct for a server with no per-request state; passing a factory is
-what the 2026-07-28 revision needs, and it also serves 2025-era requests without change.</p>
+<p>Passing a ready-made <code>McpServer</code> instance is still accepted and still compiles — the Quick start
+example above is unchanged — but it is correct only for a server that will speak <strong>one</strong> revision.
+If both eras must work, pass a factory. A factory serves 2025-era clients exactly as an instance
+did, so there is no reason to prefer an instance once you have one.</p>
 <h2 id="registration-helpers" class="tsd-anchor-link">Registration helpers<a href="#registration-helpers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
 <li><code>registerTools(server, tools)</code></li>
