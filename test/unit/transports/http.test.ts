@@ -1,14 +1,19 @@
 /**
- * Specs for src/transports/http.ts: createHttpMcpRouter()'s CORS allow-list and
- * DNS-rebinding (Origin/Host) validation, and connectHttp()'s bind-host default.
+ * Specs for src/transports/http.ts: createHttpMcpRouter()'s CORS allow-list,
+ * DNS-rebinding (Origin/Host) validation, connectHttp()'s bind-host default, and
+ * dual-era serving (a 2025 client and a 2026-07-28 client against the same router).
  */
 
 import { connectHttp, createHttpMcpRouter, type Logger } from '@mcp-z/server';
+import { Client as ModernClient, StreamableHTTPClientTransport as ModernStreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport as LegacyStreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpServer } from '@modelcontextprotocol/server';
 import assert from 'assert';
 import express from 'express';
 import getPort from 'get-port';
 import * as http from 'http';
+import { z } from 'zod';
 
 describe('transports/http', () => {
   const silentLogger: Logger = { info: () => {}, error: () => {}, warn: () => {}, debug: () => {} };
@@ -53,6 +58,16 @@ describe('transports/http', () => {
       it('allows content-type', async () => {
         const allowed = await preflight('content-type');
         assert.ok(allowed.includes('content-type'), `expected 'content-type' in allow-headers, got: "${allowed}"`);
+      });
+
+      it('allows mcp-method, required on every modern (2026-07-28) request POST', async () => {
+        const allowed = await preflight('mcp-method');
+        assert.ok(allowed.includes('mcp-method'), `expected 'mcp-method' in allow-headers, got: "${allowed}"`);
+      });
+
+      it('allows mcp-name, required on every modern (2026-07-28) request POST', async () => {
+        const allowed = await preflight('mcp-name');
+        assert.ok(allowed.includes('mcp-name'), `expected 'mcp-name' in allow-headers, got: "${allowed}"`);
       });
 
       it('does not expose a session id header - the router is stateless', async () => {
@@ -145,8 +160,9 @@ describe('transports/http', () => {
           try {
             const response = await post(port, 'https://evil.example');
             assert.strictEqual(response.status, 403);
-            const body = (await response.json()) as { error?: { message?: string } };
-            assert.ok(body.error?.message?.includes('Invalid Origin header'), `expected an Origin error, got: ${JSON.stringify(body)}`);
+            const body = (await response.json()) as { error?: { code?: number; message?: string } };
+            assert.ok(body.error?.message?.includes('Invalid Origin'), `expected an Origin error, got: ${JSON.stringify(body)}`);
+            assert.strictEqual(body.error?.code, -32000);
           } finally {
             close();
           }
@@ -181,6 +197,36 @@ describe('transports/http', () => {
             close();
           }
         });
+
+        // Regression guard: the SDK's hostname guard is port-agnostic by design, so it
+        // alone would admit any port on an allowed hostname. The exact-match gate on top
+        // of it must still reject a right-hostname-wrong-port Origin.
+        it('rejects a request whose Origin hostname matches but the port does not', async () => {
+          const { port, close } = await startServer();
+          try {
+            const wrongPort = port === 65535 ? port - 1 : port + 1;
+            const response = await post(port, `http://localhost:${wrongPort}`);
+            assert.strictEqual(response.status, 403);
+            const body = (await response.json()) as { error?: { code?: number; message?: string } };
+            assert.ok(body.error?.message?.includes('Invalid Origin'), `expected an Origin error, got: ${JSON.stringify(body)}`);
+            assert.strictEqual(body.error?.code, -32000);
+          } finally {
+            close();
+          }
+        });
+
+        it('admits exactly a caller-supplied allowedOrigins entry and refuses the same host on a different port', async () => {
+          const { port, close } = await startServer({ allowedOrigins: ['https://app.example.com:8443'] });
+          try {
+            const admitted = await post(port, 'https://app.example.com:8443');
+            assert.strictEqual(admitted.status, 200);
+
+            const refused = await post(port, 'https://app.example.com:9999');
+            assert.strictEqual(refused.status, 403);
+          } finally {
+            close();
+          }
+        });
       });
 
       // The SDK's Host check is stricter than the Origin check: absent OR unlisted both
@@ -192,7 +238,7 @@ describe('transports/http', () => {
             const { status, body } = await postWithHost(port, 'evil.example');
             assert.strictEqual(status, 403);
             const parsed = JSON.parse(body) as { error?: { message?: string } };
-            assert.ok(parsed.error?.message?.includes('Invalid Host header'), `expected a Host error, got: ${body}`);
+            assert.ok(parsed.error?.message?.includes('Invalid Host'), `expected a Host error, got: ${body}`);
           } finally {
             close();
           }
@@ -217,6 +263,71 @@ describe('transports/http', () => {
             close();
           }
         });
+
+        // Same regression as the Origin case above, for the Host header.
+        it('rejects a request whose Host hostname matches but the port does not', async () => {
+          const { port, close } = await startServer();
+          try {
+            const wrongPort = port === 65535 ? port - 1 : port + 1;
+            const { status, body } = await postWithHost(port, `localhost:${wrongPort}`);
+            assert.strictEqual(status, 403);
+            const parsed = JSON.parse(body) as { error?: { message?: string } };
+            assert.ok(parsed.error?.message?.includes('Invalid Host'), `expected a Host error, got: ${body}`);
+          } finally {
+            close();
+          }
+        });
+      });
+
+      // There are no sessions to terminate, so DELETE stays a 405 - but spec's new
+      // error-code policy says implementations SHOULD NOT use -32000..-32019, so this
+      // uses -32600 (Invalid Request) rather than the legacy transport's -32000.
+      describe('DELETE stub', () => {
+        it('answers DELETE with 405 and JSON-RPC code -32600', async () => {
+          const { port, close } = await startServer();
+          try {
+            const response = await fetch(`http://127.0.0.1:${port}/mcp`, { method: 'DELETE' });
+            assert.strictEqual(response.status, 405);
+            const body = (await response.json()) as { error?: { code?: number } };
+            assert.strictEqual(body.error?.code, -32600);
+          } finally {
+            close();
+          }
+        });
+      });
+    });
+
+    describe('factory-based mcpServer', () => {
+      it('accepts a factory and constructs a fresh instance per request', async () => {
+        const port = await getPort();
+        const app = express();
+        let constructions = 0;
+        const buildServer = () => {
+          constructions++;
+          return new McpServer({ name: 'factory-test', version: '1.0.0' });
+        };
+        app.use('/mcp', createHttpMcpRouter({ mcpServer: buildServer, logger: silentLogger, port }));
+
+        const server = app.listen(port);
+        try {
+          const initializeBody = {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'factory-test', version: '1.0.0' } },
+          };
+          for (let i = 0; i < 2; i++) {
+            const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+              body: JSON.stringify(initializeBody),
+            });
+            assert.strictEqual(response.status, 200);
+          }
+          assert.strictEqual(constructions, 2, 'each stateless request should build its own instance from the factory');
+        } finally {
+          server.close();
+        }
       });
     });
   });
@@ -254,6 +365,115 @@ describe('transports/http', () => {
           await close();
         }
       });
+    });
+  });
+
+  // Proves the point of this migration: the SAME router, from the SAME factory, answers
+  // a 2025-era client (initialize handshake) and a 2026-07-28 client (no initialize, a
+  // server/discover-negotiated connection) with no divergence in tool definitions or results.
+  describe('dual-era serving (createMcpHandler)', () => {
+    const buildEchoServer = () => {
+      const mcpServer = new McpServer({ name: 'dual-era-test', version: '1.0.0' });
+      mcpServer.registerTool(
+        'echo',
+        {
+          title: 'Echo',
+          description: 'Echoes back the provided message',
+          inputSchema: z.object({ message: z.string() }),
+          outputSchema: z.object({ echo: z.string() }),
+        },
+        async (args: { message: string }) => {
+          const output = { echo: `echo: ${args.message}` };
+          return { content: [{ type: 'text' as const, text: JSON.stringify(output) }], structuredContent: output };
+        }
+      );
+      return mcpServer;
+    };
+
+    const startEchoRouter = async () => {
+      const port = await getPort();
+      const app = express();
+      app.use('/mcp', createHttpMcpRouter({ mcpServer: buildEchoServer, logger: silentLogger, port }));
+      const server = app.listen(port);
+      return { url: `http://127.0.0.1:${port}/mcp`, close: () => server.close() };
+    };
+
+    // Spec (JSON Schema in tool definitions): a `$ref` MUST be local (`#/...`) - network
+    // refs are forbidden, since a client is not expected to dereference an external URL.
+    function assertLocalRefs(schema: unknown, path = '$'): void {
+      if (Array.isArray(schema)) {
+        for (const [i, item] of schema.entries()) assertLocalRefs(item, `${path}[${i}]`);
+        return;
+      }
+      if (schema && typeof schema === 'object') {
+        for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
+          if (key === '$ref') {
+            assert.ok(typeof value === 'string' && value.startsWith('#'), `expected a local $ref at ${path}.$ref, got: ${String(value)}`);
+          } else {
+            assertLocalRefs(value, `${path}.${key}`);
+          }
+        }
+      }
+    }
+
+    it('serves a legacy 2025 client end-to-end (initialize + tools/call) on the same router', async () => {
+      const { url, close } = await startEchoRouter();
+      let client: LegacyClient | undefined;
+      try {
+        client = new LegacyClient({ name: 'legacy-test-client', version: '1.0.0' });
+        const transport = new LegacyStreamableHTTPClientTransport(new URL(url));
+        await client.connect(transport);
+
+        const { tools } = await client.listTools();
+        const echoTool = tools.find((t) => t.name === 'echo');
+        assert.ok(echoTool, 'legacy client should see the echo tool');
+        assertLocalRefs(echoTool?.inputSchema, 'inputSchema');
+        assertLocalRefs(echoTool?.outputSchema, 'outputSchema');
+
+        const result = await client.callTool({ name: 'echo', arguments: { message: 'legacy' } });
+        const structured = result.structuredContent as { echo?: string } | undefined;
+        assert.strictEqual(structured?.echo, 'echo: legacy');
+      } finally {
+        if (client) await client.close();
+        close();
+      }
+    });
+
+    it('serves a 2026-07-28 client end-to-end without an initialize handshake', async () => {
+      const { url, close } = await startEchoRouter();
+      let client: ModernClient | undefined;
+      try {
+        client = new ModernClient({ name: 'modern-test-client', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
+        const transport = new ModernStreamableHTTPClientTransport(new URL(url));
+        await client.connect(transport);
+
+        const { tools } = await client.listTools();
+        const echoTool = tools.find((t) => t.name === 'echo');
+        assert.ok(echoTool, 'modern client should see the echo tool');
+        assertLocalRefs(echoTool?.inputSchema, 'inputSchema');
+        assertLocalRefs(echoTool?.outputSchema, 'outputSchema');
+
+        const result = await client.callTool({ name: 'echo', arguments: { message: 'modern' } });
+        const structured = result.structuredContent as { echo?: string } | undefined;
+        assert.strictEqual(structured?.echo, 'echo: modern');
+      } finally {
+        if (client) await client.close();
+        close();
+      }
+    });
+
+    it('still rejects an evil Origin for a pinned-modern client the same way', async () => {
+      const { url, close } = await startEchoRouter();
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', Origin: 'https://evil.example' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+        });
+        assert.strictEqual(response.status, 403);
+      } finally {
+        close();
+      }
     });
   });
 });

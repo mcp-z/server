@@ -61,7 +61,15 @@ export interface SetupStdioTransportResult {
 }
 
 export interface CreateHttpMcpRouterOptions {
-  mcpServer: McpServer;
+  /**
+   * The MCP server to serve. Either a ready-made instance (shared across
+   * every request - only correct for a server with no per-request state) or
+   * a factory called once per request, which is what serves both protocol
+   * eras without drift: `createMcpHandler` builds one instance per exchange
+   * from the same factory for the modern path and the 2025-era stateless
+   * fallback alike.
+   */
+  mcpServer: McpServer | (() => McpServer);
   logger: Logger;
   /**
    * Port the HTTP server is bound to. Used to derive the loopback Origin/Host
