@@ -13,20 +13,26 @@
 <section class="tsd-panel">
 <ul class="tsd-signatures">
 <li class="">
-<div class="tsd-signature tsd-anchor-link" id="connectstdio"><span class="tsd-kind-call-signature">connectStdio</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">mcpServer</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">McpServer</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?:</span> <a href="../types/Logger.html" class="tsd-signature-type tsd-kind-type-alias">Logger</a> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/SetupStdioTransportResult.html" class="tsd-signature-type tsd-kind-interface">SetupStdioTransportResult</a><span class="tsd-signature-symbol">&gt;</span><a href="#connectstdio" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-signature tsd-anchor-link" id="connectstdio"><span class="tsd-kind-call-signature">connectStdio</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">mcpServerOrFactory</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">McpServer</span> <span class="tsd-signature-symbol">|</span> (<span class="tsd-signature-symbol">()</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">McpServer</span>)<span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">options</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?:</span> <a href="../types/Logger.html" class="tsd-signature-type tsd-kind-type-alias">Logger</a> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/SetupStdioTransportResult.html" class="tsd-signature-type tsd-kind-interface">SetupStdioTransportResult</a><span class="tsd-signature-symbol">&gt;</span><a href="#connectstdio" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
 <div class="tsd-description">
-<div class="tsd-comment tsd-typography"><p>Set up stdio transport for MCP server
-Connects the server to stdin/stdout for local CLI usage
-Returns the transport so it can be closed during close</p>
+<div class="tsd-comment tsd-typography"><p>Set up stdio transport for MCP server: connects the server to stdin/stdout for local
+CLI usage. <code>serveStdio</code> owns the era decision for the connection - the opening exchange
+(an <code>initialize</code> request pins 2025-era, a <code>server/discover</code> probe pins 2026-07-28) selects
+which instance from <code>factory</code> serves the connection's lifetime. Never pass <code>legacy: 'reject'</code>
+here: dropping 2025-era stdio clients (Claude Desktop, Claude Code) is not this package's call.</p>
 </div>
 <div class="tsd-parameters">
 <h4 class="tsd-parameters-title">Parameters</h4>
 <ul class="tsd-parameter-list">
-<li><span><span class="tsd-kind-parameter">mcpServer</span>: <span class="tsd-signature-type">McpServer</span></span></li>
+<li><span><span class="tsd-kind-parameter">mcpServerOrFactory</span>: <span class="tsd-signature-type">McpServer</span> <span class="tsd-signature-symbol">|</span> (<span class="tsd-signature-symbol">()</span> <span class="tsd-signature-symbol">=&gt;</span> <span class="tsd-signature-type">McpServer</span>)</span>
+<div class="tsd-comment tsd-typography"><p>Either a ready-made <code>McpServer</code> instance or a factory called
+once per connection. A factory is what serves both protocol eras from the same definitions;
+an instance is served through a factory that always returns it.</p>
+</div></li>
 <li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">options</span>: <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">logger</span><span class="tsd-signature-symbol">?:</span> <a href="../types/Logger.html" class="tsd-signature-type tsd-kind-type-alias">Logger</a> <span class="tsd-signature-symbol">}</span></span></li></ul></div>
 <h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/SetupStdioTransportResult.html" class="tsd-signature-type tsd-kind-interface">SetupStdioTransportResult</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/mcp-z/server/blob/1aed361f55cae37ca47cbaf52ad42d27271961fd/src/transports/stdio.ts#L10">transports/stdio.ts:10</a></li></ul></aside></div></li></ul></section></div>
+<li>Defined in <a href="https://github.com/mcp-z/server/blob/1b13bcfab591b835f84ad27f7e2648ee8e156ef7/src/transports/stdio.ts#L16">transports/stdio.ts:16</a></li></ul></aside></div></li></ul></section></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
