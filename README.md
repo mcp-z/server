@@ -71,11 +71,36 @@ example above is unchanged — but it is correct only for a server that will spe
 If both eras must work, pass a factory. A factory serves 2025-era clients exactly as an instance
 did, so there is no reason to prefer an instance once you have one.
 
+## Cache hints
+
+On 2026-07-28 the SDK stamps `ttlMs` and `cacheScope` onto every cacheable result, defaulting to
+`ttlMs: 0` / `cacheScope: 'private'` — the safest policy, and one that forfeits caching entirely.
+`defaultCacheHints` is a policy for a typical mcp-z server: catalogs are cacheable and shareable,
+anything derived from a user's account is not.
+
+```ts
+import { McpServer } from '@modelcontextprotocol/server';
+import { defaultCacheHints } from '@mcp-z/server';
+
+const mcpServer = new McpServer({ name: 'my-server', version: '1.0.0' }, { cacheHints: defaultCacheHints });
+```
+
+`tools/list`, `prompts/list`, `resources/templates/list` and `server/discover` are given a five-minute
+TTL and `cacheScope: 'public'`, because each is fixed at registration and identical for every caller.
+`resources/list` and `resources/read` stay `private` with no TTL: those vary by account, and marking
+them `public` would let a shared cache serve one user's data to another. Override a single operation
+by spreading (`{ ...defaultCacheHints, 'tools/list': { ttlMs: 0 } }`). 2025-era responses are
+unaffected — the fields do not exist there.
+
 ## Registration helpers
 
 - `registerTools(server, tools)`
 - `registerResources(server, resources)`
 - `registerPrompts(server, prompts)`
+
+Each registers in **name order**, not the order the array happened to arrive in, so two servers built
+from the same modules produce identical `tools/list` results. That is what lets a 2026-07-28 client
+keep a cached catalog valid across a reconnect. The array you pass is not mutated.
 
 ## Middleware composition
 
