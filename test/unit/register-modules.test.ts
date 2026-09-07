@@ -254,4 +254,73 @@ describe('register-modules', () => {
       assert.strictEqual(calls.prompts.length, 0);
     });
   });
+  describe('deterministic ordering', () => {
+    const noopHandler = async () => ({ content: [] });
+    const toolConfig = { inputSchema: z.object({}), outputSchema: z.object({}) };
+
+    const makeTools = (names: string[]): ToolModule[] => names.map((name) => ({ name, config: toolConfig, handler: noopHandler }));
+    const makePrompts = (names: string[]): PromptModule[] => names.map((name) => ({ name, config: { argsSchema: {} }, handler: noopHandler }));
+    const makeResources = (names: string[]): ResourceModule[] => names.map((name) => ({ name, template: new ResourceTemplate(`test://${name}/{id}`, { list: undefined }), handler: noopHandler }));
+
+    it('registers tools in name order regardless of array order', () => {
+      const { server, calls } = createMockServer();
+
+      registerTools(server, makeTools(['zebra', 'alpha', 'monkey']));
+
+      assert.deepStrictEqual(
+        calls.tools.map((t) => t.name),
+        ['alpha', 'monkey', 'zebra']
+      );
+    });
+
+    it('registers resources in name order regardless of array order', () => {
+      const { server, calls } = createMockServer();
+
+      registerResources(server, makeResources(['zebra', 'alpha', 'monkey']));
+
+      assert.deepStrictEqual(
+        calls.resources.map((r) => r.name),
+        ['alpha', 'monkey', 'zebra']
+      );
+    });
+
+    it('registers prompts in name order regardless of array order', () => {
+      const { server, calls } = createMockServer();
+
+      registerPrompts(server, makePrompts(['zebra', 'alpha', 'monkey']));
+
+      assert.deepStrictEqual(
+        calls.prompts.map((p) => p.name),
+        ['alpha', 'monkey', 'zebra']
+      );
+    });
+
+    // The guarantee a 2026-07-28 client depends on: two servers built from the
+    // same set of modules list them identically, so a cached tools/list stays
+    // valid across a reconnect that happens to assemble the array differently.
+    it('produces the same order across two separate server constructions', () => {
+      const first = createMockServer();
+      const second = createMockServer();
+
+      registerTools(first.server, makeTools(['delta', 'alpha', 'charlie', 'bravo']));
+      registerTools(second.server, makeTools(['bravo', 'charlie', 'delta', 'alpha']));
+
+      assert.deepStrictEqual(
+        first.calls.tools.map((t) => t.name),
+        second.calls.tools.map((t) => t.name)
+      );
+    });
+
+    it('does not mutate the caller array', () => {
+      const { server } = createMockServer();
+      const tools = makeTools(['zebra', 'alpha']);
+
+      registerTools(server, tools);
+
+      assert.deepStrictEqual(
+        tools.map((t) => t.name),
+        ['zebra', 'alpha']
+      );
+    });
+  });
 });
