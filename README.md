@@ -43,15 +43,16 @@ if (config.transport.type === 'stdio') {
 ## Protocol versions
 
 `connectHttp` and `connectStdio` serve both the 2025 and 2026-07-28 MCP protocol revisions from
-the same server definitions, on the same HTTP endpoint and the same stdio connection — no
-configuration selects a revision. A legacy 2025 client keeps working unchanged; support for it is
-not being dropped.
+the same server definitions, on the same HTTP endpoint and the same stdio connection. A legacy
+2025 client keeps working unchanged; support for it is not being dropped.
 
-The 2026-07-28 revision is stateless: a client speaking it sends no `initialize` handshake, so the
-server needs a fresh `McpServer` per request (HTTP) or per connection (stdio) rather than one
-shared instance. To support this, `connectHttp`, `connectStdio`, and `createHttpMcpRouter` accept
-either a ready-made `McpServer` instance — as in the Quick start example above, which keeps working
-unchanged — or a factory function that builds one:
+**Serving both revisions requires a factory, not an `McpServer` instance.** The 2026-07-28
+revision is stateless — a client speaking it sends no `initialize` handshake — and the SDK caches
+the negotiated revision on the `McpServer` instance. Its own documentation puts it plainly: once a
+version is negotiated, *"a negotiated session never re-routes a method onto the other era."* So a
+single shared instance pins itself to whichever revision reaches it first and answers the other
+with `-32601 Method not found`. A factory hands every request (HTTP) or connection (stdio) a
+fresh, un-negotiated instance, so each one negotiates for itself:
 
 ```ts
 const buildServer = () => {
@@ -65,8 +66,10 @@ await connectStdio(buildServer, { logger: console });
 await connectHttp(buildServer, { logger: console, app, port: config.transport.port });
 ```
 
-Passing an instance is still correct for a server with no per-request state; passing a factory is
-what the 2026-07-28 revision needs, and it also serves 2025-era requests without change.
+Passing a ready-made `McpServer` instance is still accepted and still compiles — the Quick start
+example above is unchanged — but it is correct only for a server that will speak **one** revision.
+If both eras must work, pass a factory. A factory serves 2025-era clients exactly as an instance
+did, so there is no reason to prefer an instance once you have one.
 
 ## Registration helpers
 

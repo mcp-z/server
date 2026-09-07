@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1] - 2026-09-06
+
+Documentation only; the code is identical to 2.1.0.
+
+### Fixed
+
+- 2.1.0's notes said a client speaking either protocol revision is "served correctly with no configuration change", and that passing an `McpServer` instance "still works unchanged". That is true only for a server speaking a single revision. The SDK caches the negotiated revision on the instance, so one shared `McpServer` pins to whichever era arrives first and answers the other with `-32601 Method not found`. **Serving both revisions requires passing a factory** (`() => McpServer`) to `connectHttp` / `connectStdio` / `createHttpMcpRouter`. An instance still compiles and still works for a single revision.
+
 ## [2.1.0] - 2026-09-06
 
 ### Added
