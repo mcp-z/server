@@ -48,12 +48,29 @@ fresh, un-negotiated instance, so each one negotiates for itself:</p>
 example above is unchanged — but it is correct only for a server that will speak <strong>one</strong> revision.
 If both eras must work, pass a factory. A factory serves 2025-era clients exactly as an instance
 did, so there is no reason to prefer an instance once you have one.</p>
+<h2 id="cache-hints" class="tsd-anchor-link">Cache hints<a href="#cache-hints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>On 2026-07-28 the SDK stamps <code>ttlMs</code> and <code>cacheScope</code> onto every cacheable result, defaulting to
+<code>ttlMs: 0</code> / <code>cacheScope: 'private'</code> — the safest policy, and one that forfeits caching entirely.
+<code>defaultCacheHints</code> is a policy for a typical mcp-z server: catalogs are cacheable and shareable,
+anything derived from a user's account is not.</p>
+<pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">McpServer</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@modelcontextprotocol/server&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">defaultCacheHints</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@mcp-z/server&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">mcpServer</span><span class="hl-1"> = </span><span class="hl-5">new</span><span class="hl-1"> </span><span class="hl-0">McpServer</span><span class="hl-1">({ </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&#39;my-server&#39;</span><span class="hl-1">, </span><span class="hl-4">version:</span><span class="hl-1"> </span><span class="hl-2">&#39;1.0.0&#39;</span><span class="hl-1"> }, { </span><span class="hl-4">cacheHints:</span><span class="hl-1"> </span><span class="hl-4">defaultCacheHints</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p><code>tools/list</code>, <code>prompts/list</code>, <code>resources/templates/list</code> and <code>server/discover</code> are given a five-minute
+TTL and <code>cacheScope: 'public'</code>, because each is fixed at registration and identical for every caller.
+<code>resources/list</code> and <code>resources/read</code> stay <code>private</code> with no TTL: those vary by account, and marking
+them <code>public</code> would let a shared cache serve one user's data to another. Override a single operation
+by spreading (<code>{ ...defaultCacheHints, 'tools/list': { ttlMs: 0 } }</code>). 2025-era responses are
+unaffected — the fields do not exist there.</p>
 <h2 id="registration-helpers" class="tsd-anchor-link">Registration helpers<a href="#registration-helpers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <ul>
 <li><code>registerTools(server, tools)</code></li>
 <li><code>registerResources(server, resources)</code></li>
 <li><code>registerPrompts(server, prompts)</code></li>
 </ul>
+<p>Each registers in <strong>name order</strong>, not the order the array happened to arrive in, so two servers built
+from the same modules produce identical <code>tools/list</code> results. That is what lets a 2026-07-28 client
+keep a cached catalog valid across a reconnect. The array you pass is not mutated.</p>
 <h2 id="middleware-composition" class="tsd-anchor-link">Middleware composition<a href="#middleware-composition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
 <p>Use <code>composeMiddleware</code> with middleware layers (auth, logging, etc.):</p>
 <pre><code class="ts"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">composeMiddleware</span><span class="hl-1">, </span><span class="hl-4">createLoggingMiddleware</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;@mcp-z/server&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">logging</span><span class="hl-1"> = </span><span class="hl-0">createLoggingMiddleware</span><span class="hl-1">({ </span><span class="hl-4">logger:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1"> });</span><br/><span class="hl-5">const</span><span class="hl-1"> </span><span class="hl-6">composed</span><span class="hl-1"> = </span><span class="hl-0">composeMiddleware</span><span class="hl-1">({ </span><span class="hl-4">tools</span><span class="hl-1">, </span><span class="hl-4">resources</span><span class="hl-1">, </span><span class="hl-4">prompts</span><span class="hl-1"> }, [</span><br/><span class="hl-1">  { </span><span class="hl-4">withTool:</span><span class="hl-1"> </span><span class="hl-4">authMiddleware</span><span class="hl-1">.</span><span class="hl-4">withToolAuth</span><span class="hl-1">, </span><span class="hl-4">withResource:</span><span class="hl-1"> </span><span class="hl-4">authMiddleware</span><span class="hl-1">.</span><span class="hl-4">withResourceAuth</span><span class="hl-1">, </span><span class="hl-4">withPrompt:</span><span class="hl-1"> </span><span class="hl-4">authMiddleware</span><span class="hl-1">.</span><span class="hl-4">withPromptAuth</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-4">withTool:</span><span class="hl-1"> </span><span class="hl-4">logging</span><span class="hl-1">.</span><span class="hl-4">withToolLogging</span><span class="hl-1">, </span><span class="hl-4">withResource:</span><span class="hl-1"> </span><span class="hl-4">logging</span><span class="hl-1">.</span><span class="hl-4">withResourceLogging</span><span class="hl-1">, </span><span class="hl-4">withPrompt:</span><span class="hl-1"> </span><span class="hl-4">logging</span><span class="hl-1">.</span><span class="hl-4">withPromptLogging</span><span class="hl-1"> }</span><br/><span class="hl-1">]);</span>
@@ -103,6 +120,7 @@ did, so there is no reason to prefer an instance once you have one.</p>
 <li><a href="#install"><span>Install</span></a></li>
 <li><a href="#quick-start"><span>Quick start</span></a></li>
 <li><a href="#protocol-versions"><span>Protocol versions</span></a></li>
+<li><a href="#cache-hints"><span>Cache hints</span></a></li>
 <li><a href="#registration-helpers"><span>Registration helpers</span></a></li>
 <li><a href="#middleware-composition"><span>Middleware composition</span></a></li>
 <li><a href="#file-serving-utilities"><span>File serving utilities</span></a></li>
