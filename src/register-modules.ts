@@ -1,4 +1,4 @@
-import type { CallToolResult, McpServer, ResourceTemplate, ServerContext, StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server';
+import type { CallToolResult, McpServer, PromptCallback, ReadResourceTemplateCallback, ResourceTemplate, ServerContext, StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server';
 import type { z } from 'zod';
 import type { ResourceConfig } from './types.ts';
 
@@ -45,8 +45,13 @@ export type TypedToolResult<T> = Omit<CallToolResult, 'structuredContent'> & {
  */
 export type ToolHandler<TArgs = unknown, TExtra = ServerContext> = (args: TArgs, extra: TExtra) => Promise<CallToolResult>;
 
-export type ResourceHandler = Parameters<McpServer['registerResource']>[3];
-export type PromptHandler = Parameters<McpServer['registerPrompt']>[2];
+/**
+ * Explicit structure instead of Parameters<> extraction, which resolves only the last overload.
+ * registerPrompt's last overload is the deprecated raw-shape form; registerResource's is the
+ * ResourceTemplate one, which is what registerResources requires.
+ */
+export type ResourceHandler = ReadResourceTemplateCallback;
+export type PromptHandler = PromptCallback<StandardSchemaWithJSON>;
 
 /**
  * Prompt config signature - explicit structural type mirroring SDK registerPrompt config
@@ -59,10 +64,6 @@ export type PromptConfig = {
   description?: string;
   argsSchema?: Record<string, z.ZodType>;
 };
-
-// Compile-time validation
-type _ValidatePromptConfigAssignable = PromptConfig extends Parameters<McpServer['registerPrompt']>[1] ? true : never;
-type _ValidatePromptConfigReceivable = Parameters<McpServer['registerPrompt']>[1] extends PromptConfig ? true : never;
 
 /**
  * Tool module interface with bounded generics.
