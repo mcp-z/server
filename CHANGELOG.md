@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2] - 2026-09-08
+
+### Fixed
+
+- `PromptHandler` described the wrong function. It was extracted with `Parameters<McpServer['registerPrompt']>[2]`, and `Parameters<>` resolves only the **last** overload of an overloaded method — which for `registerPrompt` is the deprecated raw-shape form. It is now written out as `PromptCallback<StandardSchemaWithJSON>`, the non-deprecated signature.
+- `ResourceHandler` and `ResourceConfig` are written out for the same reason. Both resolved correctly by accident — `registerResource`'s last overload is the `ResourceTemplate` one, which is the only form this package registers — but they would have flipped silently had the SDK reordered its overloads. `ResourceConfig` is unchanged in shape, so annotations like `const config: ResourceConfig = { … }` are unaffected.
+
 ## [2.2.0] - 2026-09-07
 
 ### Added

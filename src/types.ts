@@ -1,9 +1,13 @@
-import type { McpServer } from '@modelcontextprotocol/server';
+import type { CacheHint, McpServer, ResourceMetadata } from '@modelcontextprotocol/server';
 import type * as http from 'http';
 
 export type Logger = Pick<Console, 'info' | 'error' | 'warn' | 'debug'>;
 
-export type ResourceConfig = Parameters<McpServer['registerResource']>[2];
+/**
+ * Explicit structure instead of Parameters<> extraction, which resolves only the last
+ * overload of registerResource.
+ */
+export type ResourceConfig = ResourceMetadata & { cacheHint?: CacheHint };
 
 /** Transport configuration type - supports stdio or HTTP transport */
 export type TransportConfig = {
