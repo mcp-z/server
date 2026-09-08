@@ -10,9 +10,13 @@
 <ul class="tsd-breadcrumb" aria-label="Breadcrumb">
 <li><a href="" aria-current="page">ResourceHandler</a></li></ul>
 <h1>Type Alias ResourceHandler</h1></div>
-<div class="tsd-signature"><span class="tsd-kind-type-alias">ResourceHandler</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Parameters</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">McpServer</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">&quot;registerResource&quot;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">3</span><span class="tsd-signature-symbol">]</span></div><aside class="tsd-sources">
+<div class="tsd-signature"><span class="tsd-kind-type-alias">ResourceHandler</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ReadResourceTemplateCallback</span></div>
+<div class="tsd-comment tsd-typography"><p>Explicit structure instead of Parameters&lt;&gt; extraction, which resolves only the last overload.
+registerPrompt's last overload is the deprecated raw-shape form; registerResource's is the
+ResourceTemplate one, which is what registerResources requires.</p>
+</div><aside class="tsd-sources">
 <ul>
-<li>Defined in <a href="https://github.com/mcp-z/server/blob/221a09811a1a4bd3ef1a0d611d4503984fc87a2e/src/register-modules.ts#L48">register-modules.ts:48</a></li></ul></aside></div>
+<li>Defined in <a href="https://github.com/mcp-z/server/blob/81416ac4403d8a5c7daa261975d44998b2f63876/src/register-modules.ts#L53">register-modules.ts:53</a></li></ul></aside></div>
 <div class="col-sidebar">
 <div class="page-menu">
 <div class="tsd-navigation settings">
