@@ -150,7 +150,7 @@ async function main() {
   // era (server/discover-negotiated) and the 2025-era initialize handshake.
   const buildServer = () => {
     // The hint travels on a symbol-keyed property only the 2026 codec reads, so
-    // one configured server proves both halves: test/unit/transports/stdio.test.ts
+    // one configured server proves both halves: test/integration/transports/stdio.test.ts
     // asserts the fields are present for a modern client and absent for a legacy one.
     const mcpServer = new McpServer({ name: 'echo-server-stdio', version: '1.0.0' }, { cacheHints: defaultCacheHints });
     registerTools(mcpServer, tools);
