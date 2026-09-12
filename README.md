@@ -13,14 +13,10 @@ Shared utilities and server orchestration for building MCP (Model Context Protoc
 ## Install
 
 ```bash
-npm install @mcp-z/server
+npm install @mcp-z/server @modelcontextprotocol/server express
 ```
 
-Peer dependencies:
-
-```bash
-npm install @modelcontextprotocol/server @modelcontextprotocol/node express
-```
+The example imports the MCP SDK and Express directly, so they are explicit application dependencies.
 
 ## Quick start
 
@@ -29,16 +25,26 @@ import express from 'express';
 import { McpServer } from '@modelcontextprotocol/server';
 import { parseConfig, connectStdio, connectHttp } from '@mcp-z/server';
 
-const mcpServer = new McpServer({ name: 'my-server', version: '1.0.0' });
 const config = parseConfig(process.argv.slice(2), process.env);
+const writeLog = (...args: unknown[]) => console.error(...args);
+const logger = { debug: writeLog, info: writeLog, warn: writeLog, error: writeLog };
+const buildServer = () => {
+  const server = new McpServer({ name: 'my-server', version: '1.0.0' });
+  server.registerTool('hello', { description: 'Return a greeting' }, async () => ({
+    content: [{ type: 'text', text: 'Hello from my server' }]
+  }));
+  return server;
+};
 
 if (config.transport.type === 'stdio') {
-  await connectStdio(mcpServer, { logger: console });
+  await connectStdio(buildServer, { logger });
 } else {
   const app = express();
-  await connectHttp(mcpServer, { logger: console, app, port: config.transport.port });
+  await connectHttp(buildServer, { logger, app, port: config.transport.port });
 }
 ```
+
+Keep logs on stderr. Writing logs to stdout corrupts the stdio protocol stream.
 
 ## Protocol versions
 
@@ -47,7 +53,7 @@ the same server definitions, on the same HTTP endpoint and the same stdio connec
 2025 client keeps working unchanged; support for it is not being dropped.
 
 **Serving both revisions requires a factory, not an `McpServer` instance.** The 2026-07-28
-revision is stateless — a client speaking it sends no `initialize` handshake — and the SDK caches
+revision is stateless. A client speaking it sends no `initialize` handshake, and the SDK caches
 the negotiated revision on the `McpServer` instance. Its own documentation puts it plainly: once a
 version is negotiated, *"a negotiated session never re-routes a method onto the other era."* So a
 single shared instance pins itself to whichever revision reaches it first and answers the other
@@ -61,20 +67,20 @@ const buildServer = () => {
   return mcpServer;
 };
 
-await connectStdio(buildServer, { logger: console });
+await connectStdio(buildServer, { logger });
 // or
-await connectHttp(buildServer, { logger: console, app, port: config.transport.port });
+await connectHttp(buildServer, { logger, app, port: config.transport.port });
 ```
 
-Passing a ready-made `McpServer` instance is still accepted and still compiles — the Quick start
-example above is unchanged — but it is correct only for a server that will speak **one** revision.
+Passing a ready-made `McpServer` instance is still accepted and still compiles, but it is correct only
+for a server that will speak **one** revision.
 If both eras must work, pass a factory. A factory serves 2025-era clients exactly as an instance
 did, so there is no reason to prefer an instance once you have one.
 
 ## Cache hints
 
 On 2026-07-28 the SDK stamps `ttlMs` and `cacheScope` onto every cacheable result, defaulting to
-`ttlMs: 0` / `cacheScope: 'private'` — the safest policy, and one that forfeits caching entirely.
+`ttlMs: 0` / `cacheScope: 'private'`. This safe default disables caching.
 `defaultCacheHints` is a policy for a typical mcp-z server: catalogs are cacheable and shareable,
 anything derived from a user's account is not.
 
@@ -90,7 +96,7 @@ TTL and `cacheScope: 'public'`, because each is fixed at registration and identi
 `resources/list` and `resources/read` stay `private` with no TTL: those vary by account, and marking
 them `public` would let a shared cache serve one user's data to another. Override a single operation
 by spreading (`{ ...defaultCacheHints, 'tools/list': { ttlMs: 0 } }`). 2025-era responses are
-unaffected — the fields do not exist there.
+unaffected because the fields do not exist there.
 
 ## Registration helpers
 
@@ -109,7 +115,7 @@ Use `composeMiddleware` with middleware layers (auth, logging, etc.):
 ```ts
 import { composeMiddleware, createLoggingMiddleware } from '@mcp-z/server';
 
-const logging = createLoggingMiddleware({ logger: console });
+const logging = createLoggingMiddleware({ logger });
 const composed = composeMiddleware({ tools, resources, prompts }, [
   { withTool: authMiddleware.withToolAuth, withResource: authMiddleware.withResourceAuth, withPrompt: authMiddleware.withPromptAuth },
   { withTool: logging.withToolLogging, withResource: logging.withResourceLogging, withPrompt: logging.withPromptLogging }
@@ -149,8 +155,8 @@ Helpers for consistent tool inputs and output shaping:
 
 ## Requirements
 
-- Node.js >= 24
+- Node.js >= 20
 
-### Documentation
+## Documentation
 
 [API Docs](https://mcp-z.github.io/server)
