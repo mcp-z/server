@@ -181,12 +181,15 @@ describe('stdio transport', () => {
     const client = await cluster.connect('echo-server');
     clients.push(client);
 
-    const result = await client.callToolRaw({ name: 'nonexistent-tool', arguments: {} });
-    assert.ok(result.isError, 'Should return error result for unknown tool');
-    assert.ok(result.content);
-    const firstContent = (result.content as unknown[])[0] as { text?: string } | undefined;
-    assert.ok(firstContent, 'Content should have first element');
-    assert.ok(firstContent.text?.includes('Tool nonexistent-tool not found'));
+    // An unknown tool is a protocol error, not a tool execution error, so it is raised
+    // rather than returned as an isError result (spec: Tools, Error Handling).
+    await assert.rejects(
+      async () => {
+        await client.callToolRaw({ name: 'nonexistent-tool', arguments: {} });
+      },
+      (error: Error & { code?: number }) => error.code === -32602 && /nonexistent-tool/.test(error.message),
+      'Should raise an Invalid Params protocol error for an unknown tool'
+    );
   });
 
   it('should handle invalid resource URI gracefully', async () => {
