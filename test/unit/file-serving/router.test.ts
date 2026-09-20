@@ -5,6 +5,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { safeRmSync } from 'fs-remove-compat';
 import { resolve } from 'path';
 import request from 'supertest';
+import { pathToFileURL } from 'url';
 
 describe('file-serving router', () => {
   let app: Express;
@@ -169,10 +170,10 @@ describe('file-serving router', () => {
   });
 
   describe('error handling', () => {
-    it('returns 500 for unexpected errors', async () => {
+    it('returns 404 when the storage directory does not exist', async () => {
       // Create router with non-existent directory (will cause error on file read)
       const router = createFileServingRouter(
-        { resourceStoreUri: 'file:///nonexistent/directory' },
+        { resourceStoreUri: pathToFileURL(resolve(testDir, 'nonexistent')).href },
         {
           contentType: 'application/pdf',
         }

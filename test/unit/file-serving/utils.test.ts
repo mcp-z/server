@@ -4,6 +4,7 @@ import assert from 'assert';
 import { existsSync } from 'fs';
 import { safeRmSync } from 'fs-remove-compat';
 import { join, resolve } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 describe('file-serving utilities', () => {
   describe('getFileUri', () => {
@@ -13,19 +14,19 @@ describe('file-serving utilities', () => {
           'test-file.pdf',
           { type: 'stdio' },
           {
-            resourceStoreUri: 'file:///tmp/files',
+            resourceStoreUri: pathToFileURL(resolve('.tmp/files')).href,
           }
         );
 
-        assert.strictEqual(uri, 'file:///tmp/files/test-file.pdf');
+        assert.strictEqual(fileURLToPath(uri), resolve('.tmp/files/test-file.pdf'));
       });
 
       it('returns file:// URI when transport is undefined', () => {
         const uri = getFileUri('test-file.pdf', undefined, {
-          resourceStoreUri: 'file:///tmp/files',
+          resourceStoreUri: pathToFileURL(resolve('.tmp/files')).href,
         });
 
-        assert.strictEqual(uri, 'file:///tmp/files/test-file.pdf');
+        assert.strictEqual(fileURLToPath(uri), resolve('.tmp/files/test-file.pdf'));
       });
 
       it('handles relative storage paths', () => {
@@ -40,6 +41,13 @@ describe('file-serving utilities', () => {
         // Should resolve to absolute path
         assert.ok(uri.startsWith('file://'));
         assert.ok(uri.endsWith('/files/test-file.pdf'));
+      });
+
+      it('encodes spaces and URL delimiters without changing the file path', () => {
+        const directory = resolve('.tmp/files #1');
+        const uri = getFileUri('report #2%.pdf', { type: 'stdio' }, { resourceStoreUri: pathToFileURL(directory).href });
+        assert.strictEqual(fileURLToPath(uri), join(directory, 'report #2%.pdf'));
+        assert.strictEqual(new URL(uri).hash, '');
       });
     });
 

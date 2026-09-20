@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { writeFile as fsWriteFile, mkdir } from 'fs/promises';
 import { join, resolve } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import type { TransportConfig } from '../types.ts';
 import type { FileReservation, FileServingConfig, FileUriConfig } from './types.ts';
 
@@ -16,6 +17,7 @@ export function resolveResourceStorePath(resourceStoreUri: string): string {
   }
 
   if (resourceStoreUri.startsWith(FILE_URI_PREFIX)) {
+    if (resourceStoreUri.startsWith('file:///')) return fileURLToPath(resourceStoreUri);
     const rawPath = resourceStoreUri.slice(FILE_URI_PREFIX.length);
     return resolve(rawPath);
   }
@@ -206,7 +208,7 @@ export function getFileUri(storedFilename: string, transport: TransportConfig | 
   if (transport?.type === 'stdio' || !transport) {
     const outputDir = resolveResourceStorePath(config.resourceStoreUri);
     const fullPath = resolve(join(outputDir, storedFilename));
-    return `${FILE_URI_PREFIX}${fullPath}`;
+    return pathToFileURL(fullPath).href;
   }
 
   // HTTP transport: return http:// URI
