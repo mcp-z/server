@@ -33,7 +33,10 @@ describe('stdio transport', () => {
       if (client) await client.close();
     }
 
-    if (cluster) await cluster.close();
+    if (cluster) {
+      const closeResult = await cluster.close();
+      assert.deepStrictEqual(closeResult, { timedOut: false, killedCount: 0 }, 'Owned stdio test server should close cooperatively without timeout or force termination');
+    }
   });
 
   it('should connect to stdio server', async () => {

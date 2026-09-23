@@ -162,10 +162,30 @@ async function main() {
 
   // Create Express app
   const app = express();
+  let closeHttpTransport;
+
+  // The owned-process test server exposes an application-specific control endpoint
+  // so its stop command can let the HTTP listener finish cooperatively.
+  app.post('/__mcpz/test-shutdown', (_request, response) => {
+    response.set('Connection', 'close').status(202).end('shutdown accepted');
+    response.once('close', () => {
+      if (!closeHttpTransport) {
+        logger.error('HTTP shutdown requested before transport setup completed');
+        process.exitCode = 1;
+        return;
+      }
+
+      void closeHttpTransport().catch((error) => {
+        logger.error('HTTP shutdown failed', { error: error instanceof Error ? error.message : String(error) });
+        process.exitCode = 1;
+      });
+    });
+  });
 
   // Setup HTTP server using high-level API
   logger.info('Starting MCP server (http)');
   const { close } = await connectHttp(buildServer, { logger, app, port });
+  closeHttpTransport = close;
   logger.info('http transport ready');
 
   // Graceful shutdown

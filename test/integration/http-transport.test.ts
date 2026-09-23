@@ -32,6 +32,10 @@ describe('HTTP transport', () => {
         start: {
           command: 'node',
           args: ['test/lib/servers/echo-server-http.mjs', '--port', String(port)],
+          stop: {
+            command: 'node',
+            args: ['test/lib/servers/request-http-stop.mjs', `http://127.0.0.1:${port}/__mcpz/test-shutdown`],
+          },
         },
       },
     };
@@ -47,7 +51,10 @@ describe('HTTP transport', () => {
       if (client) await client.close();
     }
 
-    if (cluster) await cluster.close();
+    if (cluster) {
+      const closeResult = await cluster.close();
+      assert.deepStrictEqual(closeResult, { timedOut: false, killedCount: 0 }, 'Owned HTTP test server should close cooperatively without timeout or force termination');
+    }
   });
 
   it('should connect to HTTP server', async () => {
