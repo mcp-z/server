@@ -1,8 +1,9 @@
 import { createFileServingRouter, writeFile } from '@mcp-z/server';
 import assert from 'assert';
 import express, { type Express } from 'express';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { safeRmSync } from 'fs-remove-compat';
+import { createServer, type Server } from 'http';
 import { resolve } from 'path';
 import request from 'supertest';
 import { pathToFileURL } from 'url';
@@ -138,6 +139,64 @@ describe('file-serving router', () => {
 
       const response = await request(app).get('/files/foo/../../../etc/passwd');
       assert.ok(response.status === 403 || response.status === 404);
+    });
+
+    describe('encoded separators', () => {
+      const SENTINEL = 'SIBLING-SENTINEL';
+      const IN_ROOT_BYTES = Buffer.from([0x00, 0x2e, 0x2e, 0xff, 0x0a]);
+      let server: Server | undefined;
+
+      beforeEach(async () => {
+        server = undefined;
+        const rootDir = resolve(testDir, 'root');
+        mkdirSync(rootDir, { recursive: true });
+        mkdirSync(resolve(testDir, 'root-secret'), { recursive: true });
+        writeFileSync(resolve(testDir, 'root-secret', 'sentinel.txt'), SENTINEL);
+        writeFileSync(resolve(testDir, 'outside.txt'), SENTINEL);
+        writeFileSync(resolve(rootDir, '..foo~x.csv'), IN_ROOT_BYTES);
+
+        app.use('/files', createFileServingRouter({ resourceStoreUri: pathToFileURL(rootDir).href }, { contentType: 'application/octet-stream' }));
+        const listening = createServer(app);
+        server = listening;
+        await new Promise<void>((resolveListen, rejectListen) => {
+          listening.once('error', rejectListen);
+          listening.listen(0, '127.0.0.1', () => resolveListen());
+        });
+      });
+
+      afterEach(async () => {
+        const listening = server;
+        if (listening?.listening) await new Promise<void>((resolveClose, rejectClose) => listening.close((err) => (err ? rejectClose(err) : resolveClose())));
+      });
+
+      it('rejects an encoded-slash path into a sibling sharing the root prefix', async () => {
+        assert.ok(server, 'fixture server is listening');
+        const response = await request(server).get('/files/..%2Froot-secret%2Fsentinel.txt');
+        assert.strictEqual(response.status, 403);
+        assert.ok(!response.text.includes(SENTINEL));
+      });
+
+      it('does not disclose a sibling through an encoded backslash path', async () => {
+        // Backslash is a separator on Windows and a filename character elsewhere.
+        assert.ok(server, 'fixture server is listening');
+        const response = await request(server).get('/files/..%5Croot-secret%5Csentinel.txt');
+        assert.ok(response.status === 403 || response.status === 404);
+        assert.ok(!response.text.includes(SENTINEL));
+      });
+
+      it('rejects an encoded-slash path to a sibling outside the root prefix', async () => {
+        assert.ok(server, 'fixture server is listening');
+        const response = await request(server).get('/files/..%2Foutside.txt');
+        assert.strictEqual(response.status, 403);
+        assert.ok(!response.text.includes(SENTINEL));
+      });
+
+      it('serves an in-root name that begins with dots', async () => {
+        assert.ok(server, 'fixture server is listening');
+        const response = await request(server).get('/files/..foo~x.csv').expect(200);
+        assert.ok(Buffer.isBuffer(response.body));
+        assert.ok(IN_ROOT_BYTES.equals(response.body));
+      });
     });
   });
 

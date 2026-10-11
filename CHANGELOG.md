@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.5] - 2026-10-10
+
+### Fixed
+
+- `createFileServingRouter` no longer serves files from a sibling of the resource store whose path begins with the store's path (for example `/srv/data-private/` beside a `/srv/data` store), reached through an encoded separator such as `..%2F`. Such requests now return 403.
+
 ## [2.2.2] - 2026-09-08
 
 ### Fixed

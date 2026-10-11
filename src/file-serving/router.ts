@@ -67,9 +67,9 @@ export function createFileServingRouter(config: FileServingConfig, options: File
 
       const filePath = path.join(resolvedStorageDir, filename);
 
-      // Security: Prevent path traversal attacks
-      // Ensure the resolved file path is within the resource store path
-      if (!filePath.startsWith(resolvedStorageDir)) {
+      // Security: lexical containment by path segment, so a sibling sharing the root's prefix is outside
+      const relative = path.relative(resolvedStorageDir, filePath);
+      if (relative === '' || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
         res.status(403).send('Access denied');
         return;
       }
