@@ -8,7 +8,7 @@
  * - Verifying graceful shutdown
  */
 
-import { createServerRegistry, type ManagedClient, type ServerRegistry, type ServersConfig } from '@mcp-z/client';
+import { createServerRegistry, type ManagedClient, type ServerRegistry, type ServersConfig, ToolResponseError } from '@mcp-z/client';
 import assert from 'assert';
 
 describe('stdio transport', () => {
@@ -103,7 +103,7 @@ describe('stdio transport', () => {
     assert.strictEqual(parsed.echo, 'Tool echo: test-message');
 
     // Verify structuredContent if present
-    const raw = response.raw();
+    const raw = response;
     if (raw.structuredContent) {
       const content = raw.structuredContent as { echo: string };
       assert.strictEqual(content.echo, 'Tool echo: test-message');
@@ -118,7 +118,7 @@ describe('stdio transport', () => {
     const text = resource.text();
     assert.ok(text.includes('Resource echo: hello-world'), 'Should echo message in resource');
 
-    const raw = resource.raw();
+    const raw = resource;
     assert.ok(raw.contents.length > 0, 'Should have contents');
     const content = raw.contents[0];
     assert.ok(content, 'Contents should have first element');
@@ -137,7 +137,7 @@ describe('stdio transport', () => {
     const text = prompt.text();
     assert.ok(text.includes('test-prompt'), 'Should include message in prompt');
 
-    const raw = prompt.raw();
+    const raw = prompt;
     assert.ok(raw.messages.length > 0, 'Should have messages');
     const message = raw.messages[0];
     assert.ok(message, 'Messages should have first element');
@@ -188,7 +188,7 @@ describe('stdio transport', () => {
     // rather than returned as an isError result (spec: Tools, Error Handling).
     await assert.rejects(
       async () => {
-        await client.callToolRaw({ name: 'nonexistent-tool', arguments: {} });
+        await client.callTool({ name: 'nonexistent-tool', arguments: {} });
       },
       (error: Error & { code?: number }) => error.code === -32602 && /nonexistent-tool/.test(error.message),
       'Should raise an Invalid Params protocol error for an unknown tool'
@@ -212,12 +212,19 @@ describe('stdio transport', () => {
     const client = await cluster.connect('echo-server');
     clients.push(client);
 
-    const result = await client.callToolRaw({ name: 'echo', arguments: {} });
-    assert.ok(result.isError, 'Should return error result for missing required arguments');
-    assert.ok(result.content);
-    const firstContent = (result.content as unknown[])[0] as { text?: string } | undefined;
-    assert.ok(firstContent, 'Content should have first element');
-    assert.ok(firstContent.text?.includes('Input validation error'));
+    await assert.rejects(
+      () => client.callTool({ name: 'echo', arguments: {} }),
+      (error: unknown) => {
+        assert.ok(error instanceof ToolResponseError);
+        const result = error.response;
+        assert.ok(result.isError, 'Should return error result for missing required arguments');
+        assert.ok(result.content);
+        const firstContent = (result.content as unknown[])[0] as { text?: string } | undefined;
+        assert.ok(firstContent, 'Content should have first element');
+        assert.ok(firstContent.text?.includes('Input validation error'));
+        return true;
+      }
+    );
   });
 
   // TDD Test: Verify z.object({ result: ... }) outputSchema pattern works correctly
@@ -233,7 +240,7 @@ describe('stdio transport', () => {
     });
 
     // This should NOT return an error - the structuredContent should match the outputSchema
-    const raw = response.raw();
+    const raw = response;
     assert.ok(!raw.isError, `Should succeed, but got error: ${JSON.stringify(raw.content)}`);
     assert.ok(raw.content);
     assert.ok(Array.isArray(raw.content));

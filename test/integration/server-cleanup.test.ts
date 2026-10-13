@@ -36,7 +36,7 @@ const logger = {
 describe('Server close', () => {
   describe('HTTP server close', () => {
     it('should close HTTP server with active keep-alive connection', async () => {
-      const port = await getPort();
+      const port = await getPort({ host: '127.0.0.1' });
 
       const app = express();
       app.get('/test', (_req, res) => {
@@ -81,7 +81,7 @@ describe('Server close', () => {
     });
 
     it('should close HTTP server with MCP client connection', async () => {
-      const port = await getPort();
+      const port = await getPort({ host: '127.0.0.1' });
       const url = `http://localhost:${port}/mcp`;
 
       const app = express();
@@ -130,7 +130,7 @@ describe('Server close', () => {
     });
 
     it('should close HTTP server with multiple connections', async () => {
-      const port = await getPort();
+      const port = await getPort({ host: '127.0.0.1' });
       const url = `http://localhost:${port}/mcp`;
 
       const app = express();

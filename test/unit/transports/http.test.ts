@@ -337,7 +337,7 @@ describe('transports/http', () => {
     // not every interface - 0.0.0.0 is an explicit opt-in for deployments that need it.
     describe('bind host', () => {
       it('binds to 127.0.0.1 by default, not every interface', async () => {
-        const port = await getPort();
+        const port = await getPort({ host: '127.0.0.1' });
         const app = express();
         const mcpServer = new McpServer({ name: 'bind-host-test', version: '1.0.0' });
 
@@ -352,7 +352,7 @@ describe('transports/http', () => {
       });
 
       it('binds to an explicit host when the operator opts in', async () => {
-        const port = await getPort();
+        const port = await getPort({ host: '0.0.0.0' });
         const app = express();
         const mcpServer = new McpServer({ name: 'bind-host-test', version: '1.0.0' });
 
