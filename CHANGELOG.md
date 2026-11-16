@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.0] - 2026-11-15
+
+### Added
+
+- `loadServerEnv`, `serverEnvPaths`, `serverPrivateEnvPath` and `formatServerEnvSearch`: a server reads its private settings (OAuth client IDs and secrets) from the first file found of `<baseDir>/<server>/.env` (the `.mcp-z` folder beside the nearest `.mcp.json`, else in the home folder) and `~/.config/mcp-z/<server>/.env`. Non-empty environment values win over the file. On macOS and Linux a file readable by other accounts is refused.
+
 ## [2.2.5] - 2026-10-10
 
 ### Fixed

@@ -12,6 +12,7 @@ export * from './file-serving/index.ts';
 export { type CacheableResultMethod, defaultCacheHints } from './lib/cache-hints.ts';
 // Config helpers
 export { default as findConfigPath, type FindConfigOptions } from './lib/find-config-path.ts';
+export { formatServerEnvSearch, type LoadServerEnvResult, loadServerEnv, type ServerEnvFileName, type ServerEnvOptions, type ServerEnvSearch, serverEnvPaths, serverPrivateEnvPath } from './lib/server-env.ts';
 export * from './middleware/composer.ts';
 // Middleware
 export * from './middleware/logging.ts';
