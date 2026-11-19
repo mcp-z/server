@@ -1,4 +1,4 @@
-import type { CacheHint, McpServer, ResourceMetadata } from '@modelcontextprotocol/server';
+import type { BearerAuthOptions, CacheHint, McpServer, ResourceMetadata } from '@modelcontextprotocol/server';
 import type * as http from 'http';
 
 export type Logger = Pick<Console, 'info' | 'error' | 'warn' | 'debug'>;
@@ -95,4 +95,10 @@ export interface CreateHttpMcpRouterOptions {
    * See `allowedOrigins` - same reasoning, same additive behavior.
    */
   allowedHosts?: string[];
+  /**
+   * Require a valid bearer token on every MCP request, through the SDK's `requireBearerAuth`.
+   * A missing or refused token is answered 401 with a `WWW-Authenticate` challenge naming
+   * `resourceMetadataUrl`; the verified `AuthInfo` reaches handlers as `ctx.http.authInfo`.
+   */
+  bearerAuth?: BearerAuthOptions;
 }

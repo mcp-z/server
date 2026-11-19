@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0] - 2026-11-19
+
+### Added
+
+- `bearerAuth` option on `connectHttp` and `createHttpMcpRouter`. When set, every MCP request must carry a bearer token accepted by the given verifier, through the SDK's `requireBearerAuth`. A missing or refused token is answered `401` with a `WWW-Authenticate` challenge naming `resourceMetadataUrl`, and the verified `AuthInfo` reaches handlers as `ctx.http.authInfo` in both protocol revisions. CORS preflight and the Origin/Host checks are answered before the token is asked for. Without the option nothing changes.
+- `AuthInfo`, `BearerAuthOptions` and `OAuthTokenVerifier` types are re-exported, and so are the `OAuthError` and `OAuthErrorCode` values: a verifier refuses an unknown token by throwing `OAuthError(OAuthErrorCode.InvalidToken, ...)`, which the gate answers `401 invalid_token`; any other error is answered `500`.
+
 ## [2.3.0] - 2026-11-15
 
 ### Added

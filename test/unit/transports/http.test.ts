@@ -4,16 +4,16 @@
  * dual-era serving (a 2025 client and a 2026-07-28 client against the same router).
  */
 
-import { connectHttp, createHttpMcpRouter, defaultCacheHints, type Logger } from '@mcp-z/server';
+import { connectHttp, createHttpMcpRouter, defaultCacheHints, type Logger, OAuthError, OAuthErrorCode } from '@mcp-z/server';
 import { Client as ModernClient, StreamableHTTPClientTransport as ModernStreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport as LegacyStreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpServer } from '@modelcontextprotocol/server';
 import assert from 'assert';
 import express from 'express';
-import getPort from 'get-port';
 import * as http from 'http';
 import { z } from 'zod';
+import { listenLoopback } from '../../lib/listen-loopback.ts';
 
 describe('transports/http', () => {
   const silentLogger: Logger = { info: () => {}, error: () => {}, warn: () => {}, debug: () => {} };
@@ -24,14 +24,14 @@ describe('transports/http', () => {
     // preflight itself, so these requests exercise the router's own allow-list instead.
     describe('CORS preflight', () => {
       const preflight = async (requestHeaders: string) => {
-        const port = await getPort();
+        const { port, mount, close } = await listenLoopback();
         const app = express();
         const mcpServer = new McpServer({ name: 'cors-test', version: '1.0.0' });
         app.use('/mcp', createHttpMcpRouter({ mcpServer, logger: silentLogger, port }));
+        mount(app);
 
-        const server = app.listen(port);
         try {
-          const response = await fetch(`http://localhost:${port}/mcp`, {
+          const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
             method: 'OPTIONS',
             headers: {
               Origin: `http://localhost:${port}`,
@@ -41,7 +41,7 @@ describe('transports/http', () => {
           });
           return (response.headers.get('access-control-allow-headers') ?? '').toLowerCase();
         } finally {
-          server.close();
+          await close();
         }
       };
 
@@ -71,20 +71,20 @@ describe('transports/http', () => {
       });
 
       it('does not expose a session id header - the router is stateless', async () => {
-        const port = await getPort();
+        const { port, mount, close } = await listenLoopback();
         const app = express();
         const mcpServer = new McpServer({ name: 'cors-test', version: '1.0.0' });
         app.use('/mcp', createHttpMcpRouter({ mcpServer, logger: silentLogger, port }));
+        mount(app);
 
-        const server = app.listen(port);
         try {
-          const response = await fetch(`http://localhost:${port}/mcp`, {
+          const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
             method: 'OPTIONS',
             headers: { Origin: `http://localhost:${port}`, 'Access-Control-Request-Method': 'POST' },
           });
           assert.strictEqual(response.headers.get('access-control-expose-headers'), null, 'sessionIdGenerator is undefined, so no session id exists to expose');
         } finally {
-          server.close();
+          await close();
         }
       });
     });
@@ -104,13 +104,13 @@ describe('transports/http', () => {
       };
 
       const startServer = async (extra?: { allowedOrigins?: string[]; allowedHosts?: string[] }) => {
-        const port = await getPort();
+        const { port, mount, close } = await listenLoopback();
         const app = express();
         app.use(express.json());
         const mcpServer = new McpServer({ name: 'origin-validation-test', version: '1.0.0' });
         app.use('/mcp', createHttpMcpRouter({ mcpServer, logger: silentLogger, port, ...extra }));
-        const server = app.listen(port);
-        return { port, close: () => server.close() };
+        mount(app);
+        return { port, close };
       };
 
       const post = async (port: number, origin: string | undefined) => {
@@ -164,7 +164,7 @@ describe('transports/http', () => {
             assert.ok(body.error?.message?.includes('Invalid Origin'), `expected an Origin error, got: ${JSON.stringify(body)}`);
             assert.strictEqual(body.error?.code, -32000);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -174,7 +174,7 @@ describe('transports/http', () => {
             const response = await post(port, undefined);
             assert.strictEqual(response.status, 200);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -184,7 +184,7 @@ describe('transports/http', () => {
             const response = await post(port, `http://127.0.0.1:${port}`);
             assert.strictEqual(response.status, 200);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -194,7 +194,7 @@ describe('transports/http', () => {
             const response = await post(port, `http://localhost:${port}`);
             assert.strictEqual(response.status, 200);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -211,7 +211,7 @@ describe('transports/http', () => {
             assert.ok(body.error?.message?.includes('Invalid Origin'), `expected an Origin error, got: ${JSON.stringify(body)}`);
             assert.strictEqual(body.error?.code, -32000);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -224,7 +224,7 @@ describe('transports/http', () => {
             const refused = await post(port, 'https://app.example.com:9999');
             assert.strictEqual(refused.status, 403);
           } finally {
-            close();
+            await close();
           }
         });
       });
@@ -240,7 +240,7 @@ describe('transports/http', () => {
             const parsed = JSON.parse(body) as { error?: { message?: string } };
             assert.ok(parsed.error?.message?.includes('Invalid Host'), `expected a Host error, got: ${body}`);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -250,7 +250,7 @@ describe('transports/http', () => {
             const { status } = await postWithHost(port, 'mcp.example.com');
             assert.strictEqual(status, 200);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -260,7 +260,7 @@ describe('transports/http', () => {
             const { status } = await postWithHost(port, 'evil.example');
             assert.strictEqual(status, 403);
           } finally {
-            close();
+            await close();
           }
         });
 
@@ -274,7 +274,7 @@ describe('transports/http', () => {
             const parsed = JSON.parse(body) as { error?: { message?: string } };
             assert.ok(parsed.error?.message?.includes('Invalid Host'), `expected a Host error, got: ${body}`);
           } finally {
-            close();
+            await close();
           }
         });
       });
@@ -291,7 +291,7 @@ describe('transports/http', () => {
             const body = (await response.json()) as { error?: { code?: number } };
             assert.strictEqual(body.error?.code, -32600);
           } finally {
-            close();
+            await close();
           }
         });
       });
@@ -299,7 +299,7 @@ describe('transports/http', () => {
 
     describe('factory-based mcpServer', () => {
       it('accepts a factory and constructs a fresh instance per request', async () => {
-        const port = await getPort();
+        const { port, mount, close } = await listenLoopback();
         const app = express();
         let constructions = 0;
         const buildServer = () => {
@@ -307,8 +307,8 @@ describe('transports/http', () => {
           return new McpServer({ name: 'factory-test', version: '1.0.0' });
         };
         app.use('/mcp', createHttpMcpRouter({ mcpServer: buildServer, logger: silentLogger, port }));
+        mount(app);
 
-        const server = app.listen(port);
         try {
           const initializeBody = {
             jsonrpc: '2.0',
@@ -326,7 +326,7 @@ describe('transports/http', () => {
           }
           assert.strictEqual(constructions, 2, 'each stateless request should build its own instance from the factory');
         } finally {
-          server.close();
+          await close();
         }
       });
     });
@@ -337,7 +337,7 @@ describe('transports/http', () => {
     // not every interface - 0.0.0.0 is an explicit opt-in for deployments that need it.
     describe('bind host', () => {
       it('binds to 127.0.0.1 by default, not every interface', async () => {
-        const port = await getPort({ host: '127.0.0.1' });
+        const port = 0;
         const app = express();
         const mcpServer = new McpServer({ name: 'bind-host-test', version: '1.0.0' });
 
@@ -352,7 +352,7 @@ describe('transports/http', () => {
       });
 
       it('binds to an explicit host when the operator opts in', async () => {
-        const port = await getPort({ host: '0.0.0.0' });
+        const port = 0;
         const app = express();
         const mcpServer = new McpServer({ name: 'bind-host-test', version: '1.0.0' });
 
@@ -394,11 +394,11 @@ describe('transports/http', () => {
     };
 
     const startEchoRouter = async () => {
-      const port = await getPort();
+      const { port, mount, close } = await listenLoopback();
       const app = express();
       app.use('/mcp', createHttpMcpRouter({ mcpServer: buildEchoServer, logger: silentLogger, port }));
-      const server = app.listen(port);
-      return { url: `http://127.0.0.1:${port}/mcp`, close: () => server.close() };
+      mount(app);
+      return { url: `http://127.0.0.1:${port}/mcp`, close };
     };
 
     // Spec (JSON Schema in tool definitions): a `$ref` MUST be local (`#/...`) - network
@@ -442,7 +442,7 @@ describe('transports/http', () => {
         assert.strictEqual(structured?.echo, 'echo: legacy');
       } finally {
         if (client) await client.close();
-        close();
+        await close();
       }
     });
 
@@ -469,7 +469,7 @@ describe('transports/http', () => {
         assert.strictEqual(structured?.echo, 'echo: modern');
       } finally {
         if (client) await client.close();
-        close();
+        await close();
       }
     });
 
@@ -483,7 +483,125 @@ describe('transports/http', () => {
         });
         assert.strictEqual(response.status, 403);
       } finally {
-        close();
+        await close();
+      }
+    });
+  });
+  describe('bearerAuth', () => {
+    const TOKEN = 'valid-token';
+    // A verifier is the option's interface parameter: this one knows one token and refuses the rest.
+    const verifier = {
+      async verifyAccessToken(token: string) {
+        if (token === 'outage') throw new Error('verification endpoint unavailable');
+        if (token !== TOKEN) throw new OAuthError(OAuthErrorCode.InvalidToken, 'Unknown token');
+        return { token, clientId: 'client-1', scopes: ['read'], expiresAt: Math.floor(Date.now() / 1000) + 3600, extra: { account: 'a@example.com' } };
+      },
+    };
+
+    const buildAuthEchoServer = () => {
+      const mcpServer = new McpServer({ name: 'bearer-test', version: '1.0.0' });
+      mcpServer.registerTool('whoami', { description: 'Returns the caller auth info', inputSchema: z.object({}) }, async (_args, ctx) => {
+        const authInfo = ctx.http?.authInfo;
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ clientId: authInfo?.clientId, extra: authInfo?.extra }) }] };
+      });
+      return mcpServer;
+    };
+
+    const start = async () => {
+      const { port, mount, close } = await listenLoopback();
+      const resourceMetadataUrl = `http://127.0.0.1:${port}/.well-known/oauth-protected-resource/mcp`;
+      const app = express();
+      app.use('/mcp', createHttpMcpRouter({ mcpServer: buildAuthEchoServer, logger: silentLogger, port, bearerAuth: { verifier, resourceMetadataUrl } }));
+      mount(app);
+      return { url: `http://127.0.0.1:${port}/mcp`, port, resourceMetadataUrl, close };
+    };
+
+    const initialize = (url: string, headers: Record<string, string> = {}) =>
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', 'mcp-protocol-version': '2025-06-18', ...headers },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } } }),
+      });
+
+    it('answers a request with no Authorization header with 401 and a resource_metadata challenge', async () => {
+      const { url, resourceMetadataUrl, close } = await start();
+      try {
+        const response = await initialize(url);
+        assert.strictEqual(response.status, 401);
+        const challenge = response.headers.get('www-authenticate') ?? '';
+        assert.match(challenge, /^Bearer /);
+        assert.ok(challenge.includes(`resource_metadata="${resourceMetadataUrl}"`), challenge);
+      } finally {
+        await close();
+      }
+    });
+
+    it('answers an unknown token with 401 invalid_token', async () => {
+      const { url, close } = await start();
+      try {
+        const response = await initialize(url, { Authorization: 'Bearer not-a-real-token' });
+        assert.strictEqual(response.status, 401);
+        assert.match(response.headers.get('www-authenticate') ?? '', /error="invalid_token"/);
+      } finally {
+        await close();
+      }
+    });
+
+    it('answers 500 when the verifier cannot reach its authority', async () => {
+      const { url, close } = await start();
+      try {
+        assert.strictEqual((await initialize(url, { Authorization: 'Bearer outage' })).status, 500);
+      } finally {
+        await close();
+      }
+    });
+
+    it('still answers CORS preflight, which carries no Authorization header', async () => {
+      const { url, port, close } = await start();
+      try {
+        const response = await fetch(url, { method: 'OPTIONS', headers: { Origin: `http://localhost:${port}`, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization' } });
+        assert.strictEqual(response.status, 204);
+      } finally {
+        await close();
+      }
+    });
+
+    it('refuses an evil Origin with 403 before asking for a token', async () => {
+      const { url, close } = await start();
+      try {
+        assert.strictEqual((await initialize(url, { Origin: 'https://evil.example' })).status, 403);
+      } finally {
+        await close();
+      }
+    });
+
+    it('serves a legacy 2025 client with a valid token and hands the verified authInfo to the tool', async () => {
+      const { url, close } = await start();
+      let client: LegacyClient | undefined;
+      try {
+        client = new LegacyClient({ name: 'legacy-test-client', version: '1.0.0' });
+        await client.connect(new LegacyStreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } } }));
+        const result = await client.callTool({ name: 'whoami', arguments: {} });
+        const text = (result.content as Array<{ text: string }>)[0]?.text ?? '';
+        assert.deepStrictEqual(JSON.parse(text), { clientId: 'client-1', extra: { account: 'a@example.com' } });
+      } finally {
+        if (client) await client.close();
+        await close();
+      }
+    });
+
+    it('serves a 2026-07-28 client with a valid token and hands the verified authInfo to the tool', async () => {
+      const { url, close } = await start();
+      let client: ModernClient | undefined;
+      try {
+        client = new ModernClient({ name: 'modern-test-client', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
+        await client.connect(new ModernStreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } } }));
+        const result = await client.callTool({ name: 'whoami', arguments: {} });
+        const text = (result.content as Array<{ text: string }>)[0]?.text ?? '';
+        assert.deepStrictEqual(JSON.parse(text), { clientId: 'client-1', extra: { account: 'a@example.com' } });
+      } finally {
+        if (client) await client.close();
+        await close();
       }
     });
   });

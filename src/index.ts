@@ -2,8 +2,8 @@
 // That keeps which SDK backs this package an implementation detail: a future SDK swap
 // changes this file rather than every consumer's imports.
 
-export type { CacheHint, CallToolResult, ReadResourceResult, ServerContext, StandardSchemaWithJSON } from '@modelcontextprotocol/server';
-export { McpServer, ProtocolError, ProtocolErrorCode, ResourceTemplate } from '@modelcontextprotocol/server';
+export type { AuthInfo, BearerAuthOptions, CacheHint, CallToolResult, OAuthTokenVerifier, ReadResourceResult, ServerContext, StandardSchemaWithJSON } from '@modelcontextprotocol/server';
+export { McpServer, OAuthError, OAuthErrorCode, ProtocolError, ProtocolErrorCode, ResourceTemplate } from '@modelcontextprotocol/server';
 // Builders
 export * from './builders/schemas.ts';
 // File serving utilities

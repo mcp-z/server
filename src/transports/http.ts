@@ -1,5 +1,5 @@
 import { hostHeaderValidation, originValidation, toNodeHandler } from '@modelcontextprotocol/node';
-import { createMcpHandler, localhostAllowedHostnames, type McpServer, type McpServerFactory } from '@modelcontextprotocol/server';
+import { type BearerAuthOptions, createMcpHandler, localhostAllowedHostnames, type McpServer, type McpServerFactory, requireBearerAuth } from '@modelcontextprotocol/server';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import * as http from 'http';
@@ -67,7 +67,7 @@ function exactHeaderMatch(res: Response, headerValue: string | undefined, allowe
 }
 
 /** Creates the Express router for the MCP HTTP endpoints, mounted by the caller at `/mcp`. */
-export function createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins: extraOrigins, allowedHosts: extraHosts }: CreateHttpMcpRouterOptions): express.Router {
+export function createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins: extraOrigins, allowedHosts: extraHosts, bearerAuth }: CreateHttpMcpRouterOptions): express.Router {
   const router = express.Router();
   const factory: McpServerFactory = typeof mcpServer === 'function' ? mcpServer : () => mcpServer;
 
@@ -137,7 +137,19 @@ export function createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins: e
   const handler = createMcpHandler(factory, {
     onerror: (error) => logger.error('Error handling MCP request:', { message: error.message, stack: error.stack }),
   });
-  const nodeHandler = toNodeHandler(handler, {
+  // Runs after the Origin/Host guards and CORS preflight above: a refused Origin stays 403
+  // and preflight, which carries no token, is still answered.
+  const gate = bearerAuth ? requireBearerAuth(bearerAuth) : undefined;
+  const served = gate
+    ? {
+        fetch: async (request: globalThis.Request, options?: Parameters<typeof handler.fetch>[1]) => {
+          const authInfo = await gate(request);
+          if (authInfo instanceof globalThis.Response) return authInfo;
+          return handler.fetch(request, { ...options, authInfo });
+        },
+      }
+    : handler;
+  const nodeHandler = toNodeHandler(served, {
     onerror: (error) => logger.error('Error handling MCP request:', { message: error.message, stack: error.stack }),
   });
 
@@ -173,12 +185,13 @@ export function createHttpMcpRouter({ mcpServer, logger, port, allowedOrigins: e
  * @param options.host - Interface to bind to (spec SHOULD: loopback-only); pass `'0.0.0.0'` only for a deployment that genuinely needs it, e.g. behind a reverse proxy
  * @param options.allowedOrigins - Extra Origin values to accept, added to the loopback set for `port`
  * @param options.allowedHosts - Extra Host values to accept, added to the loopback set for `port`
+ * @param options.bearerAuth - Require a verified bearer token on every request; see `CreateHttpMcpRouterOptions.bearerAuth`
  * @returns HTTP server instance
  */
-export async function connectHttp(mcpServerOrFactory: McpServer | (() => McpServer), options: { logger: Logger; app: express.Application; port: number; host?: string; allowedOrigins?: string[]; allowedHosts?: string[] }): Promise<SetupHttpTransportResult> {
-  const { logger, app, port, host = '127.0.0.1', allowedOrigins, allowedHosts } = options;
+export async function connectHttp(mcpServerOrFactory: McpServer | (() => McpServer), options: { logger: Logger; app: express.Application; port: number; host?: string; allowedOrigins?: string[]; allowedHosts?: string[]; bearerAuth?: BearerAuthOptions }): Promise<SetupHttpTransportResult> {
+  const { logger, app, port, host = '127.0.0.1', allowedOrigins, allowedHosts, bearerAuth } = options;
 
-  const router = createHttpMcpRouter({ mcpServer: mcpServerOrFactory, logger, port, allowedOrigins, allowedHosts });
+  const router = createHttpMcpRouter({ mcpServer: mcpServerOrFactory, logger, port, allowedOrigins, allowedHosts, bearerAuth });
   app.use('/mcp', router);
 
   const httpServer = http.createServer(app);

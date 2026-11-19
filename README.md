@@ -77,6 +77,37 @@ for a server that will speak **one** revision.
 If both eras must work, pass a factory. A factory serves 2025-era clients exactly as an instance
 did, so there is no reason to prefer an instance once you have one.
 
+## Bearer authentication
+
+Pass `bearerAuth` to `connectHttp` or `createHttpMcpRouter` to require a verified bearer token on
+every MCP request. The router runs the SDK's `requireBearerAuth` after its CORS and Origin/Host
+checks: a missing or refused token is answered `401` with a `WWW-Authenticate` challenge naming
+`resourceMetadataUrl`, a verifier that cannot reach its authority is answered `500`, and the
+verified `AuthInfo` reaches handlers as `ctx.http.authInfo`. The verifier must bound its own
+network calls: a verifier that never settles holds the request open. Without the option, requests
+are served as before.
+
+```ts
+import { connectHttp, OAuthError, OAuthErrorCode, type OAuthTokenVerifier } from '@mcp-z/server';
+
+const knownTokens = new Map([['token-1', 'client-1']]);
+
+const verifier: OAuthTokenVerifier = {
+  async verifyAccessToken(token) {
+    const clientId = knownTokens.get(token);
+    if (!clientId) throw new OAuthError(OAuthErrorCode.InvalidToken, 'Unknown token');
+    return { token, clientId, scopes: ['read'], expiresAt: Math.floor(Date.now() / 1000) + 3600 };
+  },
+};
+
+await connectHttp(buildServer, {
+  logger,
+  app,
+  port: config.transport.port,
+  bearerAuth: { verifier, resourceMetadataUrl: `${baseUrl}/.well-known/oauth-protected-resource/mcp` },
+});
+```
+
 ## Cache hints
 
 On 2026-07-28 the SDK stamps `ttlMs` and `cacheScope` onto every cacheable result, defaulting to
