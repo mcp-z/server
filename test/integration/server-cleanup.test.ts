@@ -57,7 +57,7 @@ describe('Server close', () => {
       try {
         // Make request with keep-alive agent
         await new Promise<void>((resolve, reject) => {
-          const req = http.get(`http://localhost:${port}/test`, { agent }, (res) => {
+          const req = http.get(`http://127.0.0.1:${port}/test`, { agent }, (res) => {
             res.on('data', () => {});
             res.on('end', () => resolve());
           });
@@ -82,7 +82,7 @@ describe('Server close', () => {
 
     it('should close HTTP server with MCP client connection', async () => {
       const port = await getPort({ host: '127.0.0.1' });
-      const url = `http://localhost:${port}/mcp`;
+      const url = `http://127.0.0.1:${port}/mcp`;
 
       const app = express();
       const mcpServer = new McpServer({
@@ -131,7 +131,7 @@ describe('Server close', () => {
 
     it('should close HTTP server with multiple connections', async () => {
       const port = await getPort({ host: '127.0.0.1' });
-      const url = `http://localhost:${port}/mcp`;
+      const url = `http://127.0.0.1:${port}/mcp`;
 
       const app = express();
       const mcpServer = new McpServer({
