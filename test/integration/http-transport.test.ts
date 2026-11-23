@@ -22,7 +22,7 @@ describe('HTTP transport', () => {
   before(async () => {
     // Get available port dynamically
     port = await getPort({ host: '127.0.0.1' });
-    url = `http://localhost:${port}/mcp`;
+    url = `http://127.0.0.1:${port}/mcp`;
 
     // Spawn HTTP echo server using @mcp-z/client infrastructure
     const config: ServersConfig = {
